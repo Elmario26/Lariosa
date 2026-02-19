@@ -2,17 +2,18 @@ import { View, Text } from 'react-native'
 import {TextInput} from 'react-native-gesture-handler'
 import React from 'react'
 
-const CustomTextInput = ({label, placeholder, value, textStyle, containerStyle}) => {
+const CustomTextInput = ({label, placeholder, value, onChangeText, textStyle, containerStyle}) => {
   return (
     <View style = {containerStyle}>
         <Text>{label}</Text>
      <TextInput 
       placeholder={placeholder}
-      onChangeText={value}
+      value={value}
+      onChangeText={onChangeText}
       style= {[
         textStyle,
         {
-        width:'80%',
+        width:'90%',
         borderBottomWidth:1,
         },
       ]} 
