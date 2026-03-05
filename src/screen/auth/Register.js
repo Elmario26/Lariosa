@@ -1,14 +1,24 @@
-import { View, Text, ScrollView, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, Alert } from 'react-native'
 import React, { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import CustomTextInput from '../../components/CustomTextInput'
 import CustomButton from '../../components/CustomButton'
 
 const Register = ({ navigation }) => {
+  const dispatch = useDispatch()
+  const { isLoading, error } = useSelector(state => state.auth)
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+
+  // Show error alert when error occurs
+  React.useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error)
+    }
+  }, [error])
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -43,22 +53,167 @@ const Register = ({ navigation }) => {
     return true
   }
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     if (!validateForm()) return
 
-    setIsLoading(true)
-    try {
-      // TODO: Replace with your actual API call
-      // const response = await registerUser({ fullName, email, password })
-      Alert.alert('Success', 'Registration successful!', [
-        { text: 'OK', onPress: () => navigation.replace('Login') },
-      ])
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Registration failed')
-    } finally {
-      setIsLoading(false)
-    }
+    // Dispatch Redux action
+    dispatch({
+      type: 'REGISTER',
+      payload: {
+        fullName,
+        email,
+        password,
+      },
+    })
+
+    // On success, navigate to Login (you can add listener in saga if needed)
+    // For now, we'll show a success alert after registration
+    Alert.alert('Success', 'Registration successful! Please log in.', [
+      { text: 'OK', onPress: () => navigation.replace('Login') },
+    ])
   }
+
+  return (
+    <ScrollView className="flex-1 bg-white">
+      <View className="flex-1 px-6 py-8">
+        {/* Header */}
+        <View className="mb-8">
+          <Text className="text-3xl font-bold text-gray-900 mb-2">
+            Create Account
+          </Text>
+          <Text className="text-base text-gray-600">
+            Sign up to get started
+          </Text>
+        </View>
+
+        {/* Form Section */}
+        <View className="mb-6">
+          {/* Full Name Input */}
+          <CustomTextInput
+            label="Full Name"
+            placeholder="Enter your full name"
+            value={fullName}
+            onChangeText={setFullName}
+            containerStyle={{ marginBottom: 20 }}
+            textStyle={{
+              fontSize: 14,
+              color: '#333',
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+            }}
+          />
+
+          {/* Email Input */}
+          <CustomTextInput
+            label="Email Address"
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            containerStyle={{ marginBottom: 20 }}
+            textStyle={{
+              fontSize: 14,
+              color: '#333',
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+            }}
+          />
+
+          {/* Password Input */}
+          <CustomTextInput
+            label="Password"
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={setPassword}
+            containerStyle={{ marginBottom: 20 }}
+            textStyle={{
+              fontSize: 14,
+              color: '#333',
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+            }}
+          />
+
+          {/* Confirm Password Input */}
+          <CustomTextInput
+            label="Confirm Password"
+            placeholder="Confirm your password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            containerStyle={{ marginBottom: 8 }}
+            textStyle={{
+              fontSize: 14,
+              color: '#333',
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+            }}
+          />
+
+          {/* Password hint */}
+          <Text className="text-xs text-gray-500 mb-6 px-1">
+            Password must be at least 6 characters
+          </Text>
+        </View>
+
+        {/* Register Button */}
+        <CustomButton
+          label={isLoading ? 'Creating Account...' : 'Sign Up'}
+          onPress={handleRegister}
+          disabled={isLoading}
+          containerStyle={{
+            marginBottom: 16,
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+          textStyle={{
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: '600',
+            backgroundColor: isLoading ? '#9CA3AF' : '#3B82F6',
+            paddingVertical: 14,
+            textAlign: 'center',
+            width: '100%',
+          }}
+        />
+
+        {/* Divider */}
+        <View className="flex-row items-center mb-6">
+          <View className="flex-1 h-px bg-gray-300" />
+          <Text className="mx-3 text-gray-500 text-sm">OR</Text>
+          <View className="flex-1 h-px bg-gray-300" />
+        </View>
+
+        {/* Login Link */}
+        <View className="flex-row justify-center items-center">
+          <Text className="text-gray-600 text-sm">
+            Already have an account?{' '}
+          </Text>
+          <CustomButton
+            label="Login"
+            onPress={() => navigation.replace('Login')}
+            textStyle={{
+              color: '#3B82F6',
+              fontSize: 14,
+              fontWeight: '600',
+            }}
+            containerStyle={{
+              padding: 0,
+            }}
+          />
+        </View>
+
+        {/* Terms */}
+        <Text className="text-center text-xs text-gray-500 mt-8">
+          By signing up, you agree to our{'\n'}
+          <Text className="text-blue-500">Terms & Conditions</Text>
+          {' '}and {' '}
+          <Text className="text-blue-500">Privacy Policy</Text>
+        </Text>
+      </View>
+    </ScrollView>
+  )
+}
+
+export default Register
 
   return (
     <ScrollView className="flex-1 bg-white">
