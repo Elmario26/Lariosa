@@ -1,6 +1,6 @@
-import { takeLatest, put } from 'redux-saga/effects'
-import { USER_LOGIN_REQUEST, USER_LOGIN_SUCCESS, USER_LOGIN_ERROR } from '../actions'
-import { loginAPI } from '../api/auth'
+import { takeLatest, put, select, call } from 'redux-saga/effects'
+import { USER_LOGIN_REQUEST, USER_LOGIN_SUCCESS, USER_LOGIN_ERROR, LOGOUT_REQUEST, LOGOUT_SUCCESS, LOGOUT_ERROR } from '../actions'
+import { loginAPI, logoutAPI } from '../api/auth'
 
 export function* userLoginAsync(action) {
   try {
@@ -14,13 +14,14 @@ export function* userLoginAsync(action) {
     console.log('[SAGA] API Response received:', response)
     
     // Dispatch success action with response data
+    // API returns: { user: {...}, token: "...", refreshToken: "..." }
     console.log('[SAGA] Dispatching USER_LOGIN_SUCCESS')
     yield put({
       type: USER_LOGIN_SUCCESS,
-      payload: response.data,
+      payload: response,  // Response IS the data, not response.data
     })
   } catch (error) {
-    console.error('[SAGA] Login error:', error.message)
+    console.error('[SAGA] Login error:', error.message || error)
     // Dispatch error action with error message
     yield put({
       type: USER_LOGIN_ERROR,
@@ -29,6 +30,22 @@ export function* userLoginAsync(action) {
   }
 }
 
+export function* userLogoutAsync() {
+  try {
+    const token = yield select(state => state.auth.token)
+    if (token) {
+      yield call(logoutAPI, token)
+    }
+    yield put({ type: LOGOUT_SUCCESS })
+  } catch (error) {
+    yield put({
+      type: LOGOUT_ERROR,
+      payload: error.message || 'Logout failed. Please try again.',
+    })
+  }
+}
+
 export function* authSaga() {
   yield takeLatest(USER_LOGIN_REQUEST, userLoginAsync)
+  yield takeLatest(LOGOUT_REQUEST, userLogoutAsync)
 }

@@ -11,19 +11,7 @@ import Navigation from './src/navigation';
 // import { GET_USER_REQUEST } from './src/app/actions';
 
 function AppContent() {
-  const dispatch = useDispatch();
   const { token, isAuthenticated } = useSelector(state => state.auth);
-
-  // Check auth state on app load
-  useEffect(() => {
-    if (token && isAuthenticated) {
-      // Optionally fetch user profile if token exists
-      dispatch({
-        //type: GET_USER_REQUEST,
-        payload: token,
-      });
-    }
-  }, [token, isAuthenticated, dispatch]);
 
   return (
     <SafeAreaProvider>

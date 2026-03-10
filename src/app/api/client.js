@@ -1,7 +1,5 @@
 const API_ENDPOINTS = {
   LOCAL: 'http://10.0.2.2:8000/api', 
-  STAGING: 'https://staging-api.example.com/api',
-  PRODUCTION: 'https://api.example.com/api'
 }
 
 const ENVIRONMENT = 'LOCAL'
@@ -40,7 +38,7 @@ export const apiRequest = async (endpoint, options = {}) => {
   console.log(`[API REQUEST] URL: ${url}`)
   console.log(`[API REQUEST] Headers:`, finalHeaders)
   if (body) {
-    console.log(`[API REQUEST] Body:`, body)
+    console.log(`📡 [API REQUEST] Body:`, JSON.stringify(body, null, 2))
   }
 
   try {
@@ -53,7 +51,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json()
 
     console.log(`[API RESPONSE] Status: ${response.status}`)
-    console.log(`[API RESPONSE] Data:`, data)
+    console.log(`[API RESPONSE] Data:`, JSON.stringify(data, null, 2))
 
     if (!response.ok) {
       console.error(`[API ERROR] Status ${response.status}: ${data.message || 'Unknown error'}`)
@@ -66,7 +64,7 @@ export const apiRequest = async (endpoint, options = {}) => {
 
     return data
   } catch (error) {
-    console.error('[API ERROR]:', error)
+    console.error('[API ERROR]:', error.message || error)
     throw error
   }
 }

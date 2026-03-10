@@ -1,5 +1,4 @@
 import { Image, Text, View } from 'react-native';
-import { IMG } from '../utils';
 const ProfileScreen = () => {
   return (
     <View
@@ -12,10 +11,8 @@ const ProfileScreen = () => {
       }}
     >
       <Image
-        source={{
-          uri: IMG.LOGO,
-        }}
-        style={{ width: 200, height: 200 }}
+        source={require('../../assets/LOGO2.png')}
+        style={{ width: 200, height: 200, resizeMode: 'contain' }}
       />
       <Text style={{ fontSize: 40 }}>ProfileScreen</Text>
     </View>

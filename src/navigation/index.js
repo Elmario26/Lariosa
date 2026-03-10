@@ -1,39 +1,26 @@
-import { createStackNavigator } from '@react-navigation/stack';
-
-// screens
-import HomeScreen from '../screen/HomeScreen';
-import ProfileScreen from '../screen/ProfileScreen';
-
-// utils
 import { NavigationContainer } from '@react-navigation/native';
-import { ROUTES } from '../utils';
 import { useEffect } from 'react';
-import { Platform, useColorScheme, StatusBar } from 'react-native';
-
-const Stack = createStackNavigator();
-
-const MainNavigation = () => {
-  return (
-    <Stack.Navigator initialRouteName={ROUTES.HOME}>
-      <Stack.Screen name={ROUTES.HOME} component={HomeScreen} />
-      <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
-    </Stack.Navigator>
-  );
-};
+import { Platform, StatusBar, useColorScheme } from 'react-native';
+import { useSelector } from 'react-redux';
 
 import AuthNav from './AuthNav';
-export default ()  => {
+import MainNav from './MainNav';
+
+const RootNavigation = () => {
   const isDarkMode = useColorScheme() === 'dark';
+  const { isAuthenticated } = useSelector(state => state.auth);
 
   useEffect(() => {
-    if(Platform.OS === 'android'){
-      StatusBar.setBarStyle('dark-content',true);
-
+    if (Platform.OS === 'android') {
+      StatusBar.setBarStyle('dark-content', true);
     }
   }, [isDarkMode]);
+
   return (
     <NavigationContainer>
-      <AuthNav/>
+      {isAuthenticated ? <MainNav /> : <AuthNav />}
     </NavigationContainer>
   );
 };
+
+export default RootNavigation;

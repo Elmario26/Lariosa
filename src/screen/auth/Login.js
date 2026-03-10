@@ -16,13 +16,6 @@ const Login = () => {
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
 
-  // Navigate to home when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigation.replace('Main')
-    }
-  }, [isAuthenticated])
-
   // Show error alert
   useEffect(() => {
     if (error) {

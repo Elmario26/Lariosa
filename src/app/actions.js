@@ -15,3 +15,8 @@ export const GET_USER_SUCCESS = 'GET_USER_SUCCESS';
 export const GET_USER_ERROR = 'GET_USER_ERROR';
 export const SET_AUTH_STATE = 'SET_AUTH_STATE';
 export const CLEAR_ERROR = 'CLEAR_ERROR';
+
+// Action creators
+export const logoutRequest = () => ({
+  type: LOGOUT_REQUEST,
+});
