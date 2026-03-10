@@ -13,12 +13,21 @@ const sagaMiddleware = createSagaMiddleware()
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth'], // Only persist auth reducer
+  whitelist: ['auth'],
+  blacklist: [], // Blacklist nothing from root
+}
+
+// Auth persist config - only persist user, token, refreshToken, isAuthenticated
+const authPersistConfig = {
+  key: 'auth',
+  storage: AsyncStorage,
+  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated'],
+  blacklist: ['isLoading', 'error'], // Don't persist loading and error states
 }
 
 // Root reducer
 const rootReducer = combineReducers({
-  auth: authReducer,
+  auth: persistReducer(authPersistConfig, authReducer),
 })
 
 // Persisted reducer

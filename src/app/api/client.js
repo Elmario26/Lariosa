@@ -1,11 +1,9 @@
-// API Client Configuration
 const API_ENDPOINTS = {
-  LOCAL: 'http://localhost:3000/api',
+  LOCAL: 'http://10.0.2.2:8000/api', 
   STAGING: 'https://staging-api.example.com/api',
   PRODUCTION: 'https://api.example.com/api'
 }
 
-// Set your environment here
 const ENVIRONMENT = 'LOCAL'
 const BASE_URL = API_ENDPOINTS[ENVIRONMENT]
 
@@ -37,6 +35,14 @@ export const apiRequest = async (endpoint, options = {}) => {
   const finalHeaders = { ...defaultHeaders, ...headers }
   const url = `${BASE_URL}${endpoint}`
 
+  // Log API request details
+  console.log(`[API REQUEST] Method: ${method}`)
+  console.log(`[API REQUEST] URL: ${url}`)
+  console.log(`[API REQUEST] Headers:`, finalHeaders)
+  if (body) {
+    console.log(`[API REQUEST] Body:`, body)
+  }
+
   try {
     const response = await fetch(url, {
       method,
@@ -46,7 +52,11 @@ export const apiRequest = async (endpoint, options = {}) => {
 
     const data = await response.json()
 
+    console.log(`[API RESPONSE] Status: ${response.status}`)
+    console.log(`[API RESPONSE] Data:`, data)
+
     if (!response.ok) {
+      console.error(`[API ERROR] Status ${response.status}: ${data.message || 'Unknown error'}`)
       throw {
         status: response.status,
         message: data.message || 'An error occurred',
@@ -56,7 +66,7 @@ export const apiRequest = async (endpoint, options = {}) => {
 
     return data
   } catch (error) {
-    console.error('API Error:', error)
+    console.error('[API ERROR]:', error)
     throw error
   }
 }

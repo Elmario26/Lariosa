@@ -1,3 +1,20 @@
+import {
+  USER_LOGIN_ERROR,
+  USER_LOGIN_REQUEST,
+  USER_LOGIN_SUCCESS,
+  REGISTER_REQUEST,
+  REGISTER_SUCCESS,
+  REGISTER_ERROR,
+  LOGOUT_REQUEST,
+  LOGOUT_SUCCESS,
+  LOGOUT_ERROR,
+  GET_USER_REQUEST,
+  GET_USER_SUCCESS,
+  GET_USER_ERROR,
+  SET_AUTH_STATE,
+  CLEAR_ERROR,
+} from '../actions';
+
 // Auth Reducer
 const initialState = {
   user: null,
@@ -11,13 +28,13 @@ const initialState = {
 const authReducer = (state = initialState, action) => {
   switch (action.type) {
     // Login actions
-    case 'LOGIN_REQUEST':
+    case USER_LOGIN_REQUEST:
       return {
         ...state,
         isLoading: true,
         error: null,
       }
-    case 'LOGIN_SUCCESS':
+    case USER_LOGIN_SUCCESS:
       return {
         ...state,
         isLoading: false,
@@ -27,7 +44,7 @@ const authReducer = (state = initialState, action) => {
         refreshToken: action.payload.refreshToken || null,
         error: null,
       }
-    case 'LOGIN_FAILURE':
+    case USER_LOGIN_ERROR:
       return {
         ...state,
         isLoading: false,
@@ -36,13 +53,13 @@ const authReducer = (state = initialState, action) => {
       }
 
     // Register actions
-    case 'REGISTER_REQUEST':
+    case REGISTER_REQUEST:
       return {
         ...state,
         isLoading: true,
         error: null,
       }
-    case 'REGISTER_SUCCESS':
+    case REGISTER_SUCCESS:
       return {
         ...state,
         isLoading: false,
@@ -52,7 +69,7 @@ const authReducer = (state = initialState, action) => {
         refreshToken: action.payload.refreshToken || null,
         error: null,
       }
-    case 'REGISTER_FAILURE':
+    case REGISTER_ERROR:
       return {
         ...state,
         isLoading: false,
@@ -60,16 +77,16 @@ const authReducer = (state = initialState, action) => {
       }
 
     // Logout actions
-    case 'LOGOUT_REQUEST':
+    case LOGOUT_REQUEST:
       return {
         ...state,
         isLoading: true,
       }
-    case 'LOGOUT_SUCCESS':
+    case LOGOUT_SUCCESS:
       return {
         ...initialState,
       }
-    case 'LOGOUT_FAILURE':
+    case LOGOUT_ERROR:
       return {
         ...state,
         isLoading: false,
@@ -77,18 +94,18 @@ const authReducer = (state = initialState, action) => {
       }
 
     // Get user profile
-    case 'GET_USER_REQUEST':
+    case GET_USER_REQUEST:
       return {
         ...state,
         isLoading: true,
       }
-    case 'GET_USER_SUCCESS':
+    case GET_USER_SUCCESS:
       return {
         ...state,
         isLoading: false,
         user: action.payload,
       }
-    case 'GET_USER_FAILURE':
+    case GET_USER_ERROR:
       return {
         ...state,
         isLoading: false,
@@ -96,14 +113,14 @@ const authReducer = (state = initialState, action) => {
       }
 
     // Set authentication state
-    case 'SET_AUTH_STATE':
+    case SET_AUTH_STATE:
       return {
         ...state,
         ...action.payload,
       }
 
     // Clear error
-    case 'CLEAR_ERROR':
+    case CLEAR_ERROR:
       return {
         ...state,
         error: null,
@@ -115,3 +132,8 @@ const authReducer = (state = initialState, action) => {
 }
 
 export default authReducer
+
+export const authlogin = (payload) => ({
+  type: USER_LOGIN_REQUEST,
+  payload,
+});

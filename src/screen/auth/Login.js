@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import CustomTextInput from '../../components/CustomTextInput'
 import CustomButton from '../../components/CustomButton'
 import { ROUTES } from '../../utils'
+import { authlogin } from '../../app/reducers/authReducer'
 
 const Login = () => {
   const navigation = useNavigation()
@@ -48,14 +49,15 @@ const Login = () => {
       return
     }
 
+    // Log credentials to console
+    console.log('[LOGIN SCREEN] Email:', email)
+    console.log('[LOGIN SCREEN] Password:', password)
+
     // Dispatch Redux action
-    dispatch({
-      type: 'LOGIN',
-      payload: {
-        email,
-        password,
-      },
-    })
+    dispatch(authlogin({
+      email,
+      password,
+    }))
   }
 
   return (

@@ -1,29 +1,43 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
 
 import { StatusBar, useColorScheme } from 'react-native';
 import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import { useEffect } from 'react';
 import { store, persistor } from './src/app/store';
 import Navigation from './src/navigation';
+// import { GET_USER_REQUEST } from './src/app/actions';
+
+function AppContent() {
+  const dispatch = useDispatch();
+  const { token, isAuthenticated } = useSelector(state => state.auth);
+
+  // Check auth state on app load
+  useEffect(() => {
+    if (token && isAuthenticated) {
+      // Optionally fetch user profile if token exists
+      dispatch({
+        //type: GET_USER_REQUEST,
+        payload: token,
+      });
+    }
+  }, [token, isAuthenticated, dispatch]);
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" />
+      <Navigation />
+    </SafeAreaProvider>
+  );
+}
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <SafeAreaProvider>
-          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-          <Navigation />
-        </SafeAreaProvider>
+        <AppContent />
       </PersistGate>
     </Provider>
   );
