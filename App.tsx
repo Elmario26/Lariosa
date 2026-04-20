@@ -9,6 +9,7 @@ import { store, persistor } from './src/app/store';
 import type { RootState } from './src/app/store';
 import Navigation from './src/navigation';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import Toast from 'react-native-toast-message';
 // import { GET_USER_REQUEST } from './src/app/actions';
 
 const AppContent: FC = () => {
@@ -18,6 +19,7 @@ const AppContent: FC = () => {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
       <Navigation />
+      <Toast />
     </SafeAreaProvider>
   );
 };

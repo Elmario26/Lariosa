@@ -4,6 +4,7 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { GoogleSignin, statusCodes, GoogleSigninButton } from '@react-native-google-signin/google-signin';
+import Toast from 'react-native-toast-message';
 
 import CustomTextInput from '../../components/CustomTextInput';
 import CustomButton from '../../components/CustomButton';
@@ -22,10 +23,14 @@ const Login: FC<LoginScreenProps> = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Show error alert
+  // Show error toast
   useEffect(() => {
     if (error) {
-      Alert.alert('Login Error', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Error',
+        text2: error,
+      });
     }
   }, [error]);
 
@@ -56,25 +61,45 @@ const Login: FC<LoginScreenProps> = () => {
       } else if (error.code === statusCodes.IN_PROGRESS) {
         console.log('[GOOGLE SIGNIN] Sign-in in progress');
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services is not available');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Google Play Services is not available',
+        });
       } else {
         console.log('[GOOGLE SIGNIN] Error:', error);
-        Alert.alert('Sign-in Error', error.message || 'An error occurred during sign-in');
+        Toast.show({
+          type: 'error',
+          text1: 'Sign-in Error',
+          text2: error.message || 'An error occurred during sign-in',
+        });
       }
     }
   };
 
   const handleLogin = (): void => {
     if (!email.trim()) {
-      Alert.alert('Validation Error', 'Please enter your email');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your email',
+      });
       return;
     }
     if (!validateEmail(email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter a valid email address',
+      });
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Validation Error', 'Please enter your password');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your password',
+      });
       return;
     }
 
