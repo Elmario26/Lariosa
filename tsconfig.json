@@ -3,7 +3,10 @@
   "compilerOptions": {
     "types": [
       "jest"
-    ]
+    ],
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment"
   },
   "include": [
     "**/*.ts",

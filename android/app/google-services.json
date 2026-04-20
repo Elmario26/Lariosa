@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "220287836624",
+    "project_id": "appdev-b9674",
+    "storage_bucket": "appdev-b9674.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220287836624:android:3fdf8ffe6fbe9930c219d5",
+        "android_client_info": {
+          "package_name": "com.lariosa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "220287836624-0lf7m4ip4nomci3dl7hjrkertklcasqt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lariosa",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "220287836624-tm0ep198jig2bvdt2mtv4fom64uksqa5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAA6cl6VHk0O0miDcp4tSBKqbf-jbqa860"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "220287836624-tm0ep198jig2bvdt2mtv4fom64uksqa5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,60 @@
+// Redux Store Configuration
+import { createStore, combineReducers, applyMiddleware, Store } from 'redux';
+import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import createSagaMiddleware, { SagaMiddleware } from 'redux-saga';
+import authReducer, { AuthState } from './reducers/authReducer';
+import vehiclesReducer, { VehiclesState } from './reducers/vehiclesReducer';
+import { authSaga } from './sagas/authSaga';
+import { vehiclesSaga } from './sagas/vehiclesSaga';
+
+// Root state interface
+export interface RootState {
+  auth: AuthState;
+  vehicles: VehiclesState;
+}
+
+// Saga middleware
+const sagaMiddleware: SagaMiddleware<any> = createSagaMiddleware();
+
+const persistConfig: PersistConfig<any> = {
+  key: 'root',
+  storage: AsyncStorage,
+  whitelist: ['auth'],
+  blacklist: [],
+};
+
+const authPersistConfig: PersistConfig<AuthState> = {
+  key: 'auth',
+  storage: AsyncStorage,
+  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated'],
+  blacklist: ['isLoading', 'error'], // Don't persist loading and error states
+};
+
+// Vehicles persist config
+const vehiclesPersistConfig: PersistConfig<VehiclesState> = {
+  key: 'vehicles',
+  storage: AsyncStorage,
+  whitelist: ['filters'],
+};
+
+// Root reducer
+const rootReducer = combineReducers({
+  auth: persistReducer(authPersistConfig, authReducer),
+  vehicles: persistReducer(vehiclesPersistConfig, vehiclesReducer),
+});
+
+// Persisted reducer
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+// Create store
+const store: Store<RootState> = createStore(persistedReducer, applyMiddleware(sagaMiddleware));
+
+// Create persistor
+const persistor = persistStore(store);
+
+// Run sagas
+sagaMiddleware.run(authSaga);
+sagaMiddleware.run(vehiclesSaga);
+
+export { store, persistor };
