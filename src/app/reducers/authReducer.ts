@@ -24,6 +24,8 @@ export interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  /** Set after POST /api/register — user must log in separately */
+  registerSuccessMessage: string | null;
 }
 
 // Action interface
@@ -40,6 +42,7 @@ const initialState: AuthState = {
   isLoading: false,
   error: null,
   isAuthenticated: false,
+  registerSuccessMessage: null,
 };
 
 // Auth Reducer
@@ -76,16 +79,16 @@ const authReducer = (state: AuthState = initialState, action: AuthAction): AuthS
         ...state,
         isLoading: true,
         error: null,
+        registerSuccessMessage: null,
       };
     case REGISTER_SUCCESS:
       return {
         ...state,
         isLoading: false,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        refreshToken: action.payload.refreshToken || null,
         error: null,
+        registerSuccessMessage:
+          action.payload.message ||
+          'Account created. Please verify your email, then sign in.',
       };
     case REGISTER_ERROR:
       return {

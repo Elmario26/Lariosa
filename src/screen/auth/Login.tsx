@@ -1,202 +1,165 @@
 import React, { useEffect, useState, FC } from 'react';
-import { View, Text, TouchableOpacity, Alert, Image, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { GoogleSignin, statusCodes, GoogleSigninButton } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import Toast from 'react-native-toast-message';
 
-import CustomTextInput from '../../components/CustomTextInput';
-import CustomButton from '../../components/CustomButton';
+import AuthScreenLayout from '../../components/auth/AuthScreenLayout';
+import AuthTextField from '../../components/auth/AuthTextField';
+import AuthPrimaryButton from '../../components/auth/AuthPrimaryButton';
 import { ROUTES } from '../../utils';
+import { AUTH_COLORS } from '../../constants/authDesign';
 import { RootState } from '../../app/store';
 import { userLoginRequest } from '../../app/actions';
 import { AuthNavProps } from '../../navigation/AuthNav';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type LoginScreenProps = StackScreenProps<any, 'Login'>;
 
 const Login: FC<LoginScreenProps> = () => {
   const navigation = useNavigation<AuthNavProps>();
   const dispatch = useDispatch();
-  const { isLoading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Show error toast
   useEffect(() => {
     if (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Login Error',
-        text2: error,
-      });
+      Toast.show({ type: 'error', text1: 'Login failed', text2: error });
     }
   }, [error]);
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const validateEmail = (value: string): boolean =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      console.log('[GOOGLE SIGNIN] User Info:', userInfo);
-      
-      const userData = userInfo as any;
-      
-      // Dispatch Redux action with Google sign-in data
+      const userData = userInfo as { user?: { email?: string }; email?: string; idToken?: string; serverAuthCode?: string };
       dispatch(
         userLoginRequest({
           email: userData.user?.email || userData.email || '',
-          password: '', // Google sign-in doesn't use password
+          password: '',
           googleToken: userData.idToken || userData.serverAuthCode || '',
         })
       );
-    } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('[GOOGLE SIGNIN] Sign-in cancelled');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('[GOOGLE SIGNIN] Sign-in in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Google Play Services is not available',
-        });
-      } else {
-        console.log('[GOOGLE SIGNIN] Error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Sign-in Error',
-          text2: error.message || 'An error occurred during sign-in',
-        });
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) return;
+      if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Toast.show({ type: 'error', text1: 'Google Play Services unavailable' });
+        return;
       }
+      Toast.show({ type: 'error', text1: 'Sign-in error', text2: error.message || 'Try again' });
     }
   };
 
   const handleLogin = (): void => {
     if (!email.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter your email',
-      });
+      Toast.show({ type: 'error', text1: 'Enter your email' });
       return;
     }
     if (!validateEmail(email)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter a valid email address',
-      });
+      Toast.show({ type: 'error', text1: 'Enter a valid email address' });
       return;
     }
     if (!password.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter your password',
-      });
+      Toast.show({ type: 'error', text1: 'Enter your password' });
       return;
     }
-
-    // Log credentials to console
-    console.log('[LOGIN SCREEN] Email:', email);
-    console.log('[LOGIN SCREEN] Password:', password);
-
-    // Dispatch Redux action
-    dispatch(
-      userLoginRequest({
-        email,
-        password,
-      })
-    );
+    dispatch(userLoginRequest({ email, password }));
   };
 
+  const footer = (
+    <Text style={styles.footerText}>
+      Don&apos;t have an account?{' '}
+      <Text style={styles.footerLink} onPress={() => navigation.navigate(ROUTES.REGISTER)}>
+        Sign up
+      </Text>
+    </Text>
+  );
+
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
-        <Image
-          source={require('../../../assets/LOGO2.png')}
-          style={{
-            width: 250,
-            height: 250,
-            alignSelf: 'center',
-            marginBottom: 30,
-            resizeMode: 'contain',
-          }}
-        />
+    <AuthScreenLayout
+      title="Welcome back"
+      subtitle="Sign in to browse cars, book test drives, and manage appointments."
+      footer={footer}
+    >
+      <AuthTextField
+        label="Email"
+        icon="email-outline"
+        placeholder="you@example.com"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
-        <CustomTextInput
-          label={'Email address'}
-          placeholder={'Enter email address'}
-          value={email}
-          onChangeText={setEmail}
-          containerStyle={{
-            padding: 5,
-          }}
-          textStyle={{
-            borderRadius: 10,
-            color: 'black',
-            marginLeft: 10,
-          }}
-        />
+      <AuthTextField
+        label="Password"
+        icon="lock-outline"
+        placeholder="Your password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
-        <CustomTextInput
-          label={'Enter password'}
-          placeholder={'Enter password'}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={true}
-          containerStyle={{
-            padding: 5,
-            marginTop: 10,
-          }}
-          textStyle={{
-            borderRadius: 10,
-            color: 'black',
-            marginLeft: 10,
-          }}
-        />
+      <AuthPrimaryButton
+        label="Sign in"
+        onPress={handleLogin}
+        loading={isLoading}
+        style={styles.primaryBtn}
+      />
 
-        <CustomButton
-          label={isLoading ? 'Logging in...' : 'Login'}
-          onPress={handleLogin}
-          containerStyle={{
-            marginTop: 30,
-            borderRadius: 10,
-            backgroundColor: '#2563EB',
-            padding: 5,
-          }}
-          textStyle={{
-            color: 'white',
-            fontSize: 16,
-            fontWeight: 'bold',
-          }}
-        />
-
-        <GoogleSigninButton
-          size={GoogleSigninButton.Size.Wide}
-          color={GoogleSigninButton.Color.Dark}
-          onPress={handleGoogleSignIn}
-          disabled={isLoading}
-          style={{ marginTop: 15, alignSelf: 'center' }}
-        />
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate(ROUTES.REGISTER)}
-          style={{ marginTop: 15, alignItems: 'center' }}
-        >
-          <Text style={{ color: '#2563EB', fontWeight: 'bold' }}>
-            Don't have an account? Sign up
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or continue with</Text>
+        <View style={styles.dividerLine} />
       </View>
-    </ScrollView>
+
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={handleGoogleSignIn}
+        disabled={isLoading}
+        activeOpacity={0.85}
+      >
+        <Icon name="google" size={22} color="#4285F4" />
+        <Text style={styles.googleText}>Continue with Google</Text>
+      </TouchableOpacity>
+    </AuthScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  primaryBtn: { marginTop: 4 },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 22,
+    gap: 10,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: AUTH_COLORS.border },
+  dividerText: { fontSize: 12, color: AUTH_COLORS.textMuted, fontWeight: '600' },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: AUTH_COLORS.border,
+    backgroundColor: '#fff',
+    gap: 10,
+  },
+  googleText: { fontSize: 15, fontWeight: '600', color: AUTH_COLORS.text },
+  footerText: { fontSize: 15, color: AUTH_COLORS.textMuted },
+  footerLink: { color: AUTH_COLORS.primary, fontWeight: '700' },
+});
 
 export default Login;

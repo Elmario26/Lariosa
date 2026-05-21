@@ -1,11 +1,12 @@
-import React, { FC } from 'react';
-import { Image, Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { FC, useEffect } from 'react';
+import { Text, View, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { ROUTES } from '../utils';
-import { logoutRequest } from '../app/actions';
+import { getUserRequest, logoutRequest } from '../app/actions';
 import { RootState } from '../app/store';
+import { formatUserRole, getUserDisplayName, getUserInitials } from '../utils/user';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -122,14 +123,30 @@ const SettingItem: FC<{ item: SettingsItem; onPress: () => void }> = ({ item, on
 
 type ProfileScreenProps = StackScreenProps<any, 'Profile'>;
 
+const ProfileDetail: FC<{ label: string; value?: string | null }> = ({ label, value }) => {
+  if (!value) return null;
+  return (
+    <View className="flex-row justify-between py-3 border-b border-gray-100">
+      <Text className="text-gray-500 text-sm">{label}</Text>
+      <Text className="text-gray-900 font-medium text-sm flex-1 text-right ml-4">{value}</Text>
+    </View>
+  );
+};
+
 const ProfileScreen: FC<ProfileScreenProps> = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isLoading } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    dispatch(getUserRequest());
+  }, [dispatch]);
 
   const handleLogout = (): void => {
     dispatch(logoutRequest());
   };
+
+  const displayName = getUserDisplayName(user);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -138,12 +155,34 @@ const ProfileScreen: FC<ProfileScreenProps> = () => {
         <View className="bg-white px-5 py-8 border-b border-gray-100">
           <View className="flex-row items-center mb-4">
             <View className="w-16 h-16 rounded-full bg-blue-600 justify-center items-center">
-              <Icon name="account" size={40} color="#fff" />
+              <Text className="text-white font-bold text-lg">{getUserInitials(user)}</Text>
             </View>
             <View className="ml-4 flex-1">
-              <Text className="text-gray-900 font-bold text-xl">{user?.email || 'Guest User'}</Text>
-              <Text className="text-gray-500 text-sm mt-1">Account Member since 2024</Text>
+              {isLoading && !user?.fullName ? (
+                <ActivityIndicator size="small" color="#2563EB" />
+              ) : (
+                <>
+                  <Text className="text-gray-900 font-bold text-xl">{displayName}</Text>
+                  {user?.role ? (
+                    <Text className="text-blue-600 text-sm mt-1 font-medium">
+                      {formatUserRole(user.role)}
+                    </Text>
+                  ) : null}
+                  <Text className="text-gray-500 text-sm mt-1">{user?.email || '—'}</Text>
+                </>
+              )}
             </View>
+          </View>
+        </View>
+
+        {/* Account details from Symfony /api/me */}
+        <View className="px-5 pt-6">
+          <Text className="text-gray-900 font-bold text-base mb-3">Account Details</Text>
+          <View className="bg-white rounded-xl px-4">
+            <ProfileDetail label="Username" value={user?.username} />
+            <ProfileDetail label="Email" value={user?.email} />
+            <ProfileDetail label="Phone" value={user?.phone} />
+            <ProfileDetail label="Status" value={user?.status} />
           </View>
         </View>
 

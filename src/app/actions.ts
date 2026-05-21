@@ -16,12 +16,18 @@ export const GET_USER_ERROR = 'GET_USER_ERROR';
 export const SET_AUTH_STATE = 'SET_AUTH_STATE';
 export const CLEAR_ERROR = 'CLEAR_ERROR';
 
-// Auth types
+// Auth types — aligned with GET /api/me
 export interface User {
-  id?: string;
+  id?: number | string;
   email: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
   fullName?: string;
-  [key: string]: any;
+  phone?: string;
+  role?: string;
+  roles?: string[];
+  status?: string;
 }
 
 export interface AuthPayload {
@@ -51,5 +57,10 @@ export const registerRequest = (payload: RegisterPayload) => ({
   payload,
 });
 
+export const getUserRequest = () => ({
+  type: GET_USER_REQUEST,
+});
+
 // Re-export vehicle action types and creators
 export * from './actions/vehicles';
+export * from './actions/bookings';

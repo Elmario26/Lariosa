@@ -68,20 +68,9 @@ export const getVehicleByIdAPI = async (
  * @param {string} token - Authentication token (optional)
  * @returns {Promise} Featured cars list
  */
+/** Backend has no featured filter — returns same collection as /cars */
 export const getFeaturedVehiclesAPI = async (token: string | null = null): Promise<VehicleListResponse> => {
-  return apiRequest('/cars?featured=true', {
-    method: 'GET',
-    token,
-  });
-};
-
-/**
- * Get car types/categories
- * @param {string} token - Authentication token (optional)
- * @returns {Promise} Car types list
- */
-export const getVehicleTypesAPI = async (token: string | null = null): Promise<any> => {
-  return apiRequest('/cars/types', {
+  return apiRequest('/cars', {
     method: 'GET',
     token,
   });

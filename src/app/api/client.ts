@@ -1,65 +1,45 @@
-const API_ENDPOINTS = {
-  // Android emulator to host machine (most common)
-  ANDROID_EMULATOR: 'http://10.0.2.2:8000/api',
-  // iOS simulator or web
-  LOCALHOST: 'http://localhost:8000/api',
-  // Your actual local network IP (find with ipconfig/ifconfig)
-  // Example: 'http://192.168.1.100:8000/api',
-  NETWORK: 'http://192.168.1.100:8000/api',
-  // Production
-  PRODUCTION: 'https://your-production-api.com/api',
-} as const;
+import { API_BASE_URL } from '../config/api';
+import { extractApiErrorMessage } from './normalize';
 
-// Change this to switch environments
-const ENVIRONMENT = 'ANDROID_EMULATOR';
-const BASE_URL = API_ENDPOINTS[ENVIRONMENT as keyof typeof API_ENDPOINTS];
-
-export { BASE_URL, API_ENDPOINTS, ENVIRONMENT };
+export { API_BASE_URL };
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  body?: any;
+  body?: unknown;
   headers?: Record<string, string>;
   token?: string | null;
 }
 
-interface ApiErrorResponse {
+export interface ApiErrorResponse {
   status: number;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 /**
- * Generic API request handler
- * @param {string} endpoint - The API endpoint
- * @param {RequestOptions} options - Request options (method, body, headers, etc)
- * @returns {Promise} API response
+ * Generic API request handler (Symfony JSON API)
  */
-export const apiRequest = async (endpoint: string, options: RequestOptions = {}) => {
-  const {
-    method = 'GET',
-    body = null,
-    headers = {},
-    token = null,
-  } = options;
+export const apiRequest = async <T = unknown>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> => {
+  const { method = 'GET', body = null, headers = {}, token = null } = options;
 
   const defaultHeaders: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
     'Content-Type': 'application/json',
   };
 
   if (token) {
-    defaultHeaders['Authorization'] = `Bearer ${token}`;
+    defaultHeaders.Authorization = `Bearer ${token}`;
   }
 
   const finalHeaders = { ...defaultHeaders, ...headers };
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
 
-  console.log(`[API REQUEST] Method: ${method}`);
-  console.log(`[API REQUEST] URL: ${url}`);
-  console.log(`[API REQUEST] Headers:`, finalHeaders);
-  if (body) {
-    console.log(`[API REQUEST] Body:`, JSON.stringify(body, null, 2));
+  if (__DEV__) {
+    console.log(`[API] ${method} ${url}`);
+    if (body) console.log('[API] body:', body);
   }
 
   try {
@@ -69,23 +49,41 @@ export const apiRequest = async (endpoint: string, options: RequestOptions = {})
       body: body ? JSON.stringify(body) : null,
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data: Record<string, unknown> | null = null;
 
-    console.log(`[API RESPONSE] Status: ${response.status}`);
-    console.log(`[API RESPONSE] Data:`, JSON.stringify(data, null, 2));
-
-    if (!response.ok) {
-      console.error(`[API ERROR] Status ${response.status}: ${data.message || 'Unknown error'}`);
-      throw {
-        status: response.status,
-        message: data.message || 'An error occurred',
-        data: data,
-      } as ApiErrorResponse;
+    if (text) {
+      try {
+        data = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw {
+          status: response.status,
+          message: 'Invalid JSON response from server',
+          data: text,
+        } as ApiErrorResponse;
+      }
     }
 
-    return data;
+    if (__DEV__) {
+      console.log(`[API] ${response.status}`, data ?? '(empty)');
+    }
+
+    if (!response.ok) {
+      const message = extractApiErrorMessage(data, `Request failed (${response.status})`);
+      throw { status: response.status, message, data } as ApiErrorResponse;
+    }
+
+    return (data ?? {}) as T;
   } catch (error) {
-    console.error('[API ERROR]:', (error as any)?.message || error);
-    throw error;
+    const apiError = error as ApiErrorResponse;
+    if (apiError?.status) throw error;
+
+    console.error('[API] network error:', error);
+    throw {
+      status: 0,
+      message:
+        'Cannot reach the Symfony server. Check that it is running, ENVIRONMENT in src/app/config/api.ts matches your device, and Postman uses the same host/port.',
+      data: error,
+    } as ApiErrorResponse;
   }
 };

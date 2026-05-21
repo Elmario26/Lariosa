@@ -128,7 +128,7 @@ const VehicleDetailScreen: FC<VehicleDetailScreenProps> = () => {
           {/* Action Buttons */}
           <View className="flex-row mb-8 space-x-3">
             <TouchableOpacity
-              onPress={() => navigation.navigate(ROUTES.TEST_DRIVE)}
+              onPress={() => navigation.navigate(ROUTES.TEST_DRIVE, { vehicle })}
               className="flex-1 bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center"
             >
               <Icon name="car-clock" size={20} color="#fff" />
