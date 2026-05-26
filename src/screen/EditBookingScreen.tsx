@@ -7,7 +7,6 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,6 +24,7 @@ import {
   validateFutureBooking,
 } from '../utils/bookingDateTime';
 import { RootState } from '../app/store';
+import { useAppDialog } from '../context/AppDialogContext';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -37,6 +37,7 @@ const EditBookingScreen: FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const bookingId = route.params?.bookingId;
   const dispatch = useDispatch();
+  const dialog = useAppDialog();
 
   const { currentBooking, isLoading, isSubmitting, error, lastActionMessage } = useSelector(
     (s: RootState) => s.bookings
@@ -57,9 +58,7 @@ const EditBookingScreen: FC = () => {
   useEffect(() => {
     if (currentBooking?.id === bookingId && !initialized) {
       if (!canModifyBooking(currentBooking)) {
-        Alert.alert('Cannot edit', 'Only pending bookings can be changed.', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        dialog.alert('Cannot edit', 'Only pending bookings can be changed.', () => navigation.goBack(), 'warning');
         return;
       }
       const { date, time } = parseRequestedDateTime(currentBooking.requestedDateTime);
@@ -68,31 +67,26 @@ const EditBookingScreen: FC = () => {
       setNotes(currentBooking.notes ?? '');
       setInitialized(true);
     }
-  }, [currentBooking, bookingId, initialized, navigation]);
+  }, [currentBooking, bookingId, initialized, navigation, dialog]);
 
   useEffect(() => {
     if (error) {
-      Alert.alert('Update failed', error, [{ text: 'OK', onPress: () => dispatch(clearBookingError()) }]);
+      dialog.alert('Update failed', error, () => dispatch(clearBookingError()), 'danger');
     }
-  }, [error, dispatch]);
+  }, [error, dispatch, dialog]);
 
   useEffect(() => {
     if (!lastActionMessage) return;
-    Alert.alert('Saved', lastActionMessage, [
-      {
-        text: 'OK',
-        onPress: () => {
-          dispatch(clearBookingSuccessMessage());
-          navigation.goBack();
-        },
-      },
-    ]);
-  }, [lastActionMessage, navigation, dispatch]);
+    dialog.alert('Saved', lastActionMessage, () => {
+      dispatch(clearBookingSuccessMessage());
+      navigation.goBack();
+    }, 'success');
+  }, [lastActionMessage, navigation, dispatch, dialog]);
 
   const handleSave = (): void => {
     const validationError = validateFutureBooking(bookingDate, bookingTime);
     if (validationError) {
-      Alert.alert('Invalid schedule', validationError);
+      dialog.alert('Invalid schedule', validationError, undefined, 'warning');
       return;
     }
     if (!bookingId) return;
@@ -115,7 +109,7 @@ const EditBookingScreen: FC = () => {
   const booking = currentBooking?.id === bookingId ? currentBooking : null;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-app-bg">
       <View className="flex-row items-center px-5 py-4 bg-white">
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#374151" />
@@ -125,7 +119,7 @@ const EditBookingScreen: FC = () => {
 
       {isLoading && !booking ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#76ABAE" />
         </View>
       ) : booking ? (
         <ScrollView className="flex-1 px-5 py-6" showsVerticalScrollIndicator={false}>
@@ -155,7 +149,7 @@ const EditBookingScreen: FC = () => {
           <TouchableOpacity
             onPress={handleSave}
             disabled={isSubmitting}
-            className="bg-blue-600 px-6 py-4 rounded-2xl mb-20"
+            className="bg-app-primary px-6 py-4 rounded-2xl mb-20"
             style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
             {isSubmitting ? (

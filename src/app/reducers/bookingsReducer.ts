@@ -23,6 +23,7 @@ export interface BookingsState {
   bookings: TestDriveBooking[];
   currentBooking: TestDriveBooking | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   isSubmitting: boolean;
   error: string | null;
   lastCreatedMessage: string | null;
@@ -38,6 +39,7 @@ const initialState: BookingsState = {
   bookings: [],
   currentBooking: null,
   isLoading: false,
+  isRefreshing: false,
   isSubmitting: false,
   error: null,
   lastCreatedMessage: null,
@@ -51,31 +53,42 @@ const upsertBooking = (list: TestDriveBooking[], booking: TestDriveBooking): Tes
 
 const bookingsReducer = (state: BookingsState = initialState, action: BookingsAction): BookingsState => {
   switch (action.type) {
-    case GET_BOOKINGS_REQUEST:
-    case GET_BOOKING_DETAIL_REQUEST:
+    case GET_BOOKINGS_REQUEST: {
+      const silent = action.payload?.silent;
+      const refresh = action.payload?.refresh;
+      if (silent) {
+        return { ...state, error: null };
+      }
+      if (refresh) {
+        return { ...state, isRefreshing: true, error: null };
+      }
       return { ...state, isLoading: true, error: null };
+    }
+
+    case GET_BOOKING_DETAIL_REQUEST:
+      return { ...state, error: null };
 
     case GET_BOOKINGS_SUCCESS:
       return {
         ...state,
         isLoading: false,
+        isRefreshing: false,
         bookings: action.payload,
         error: null,
       };
 
     case GET_BOOKINGS_ERROR:
-      return { ...state, isLoading: false, error: action.payload };
+      return { ...state, isLoading: false, isRefreshing: false, error: action.payload };
 
     case GET_BOOKING_DETAIL_SUCCESS:
       return {
         ...state,
-        isLoading: false,
         currentBooking: action.payload,
         error: null,
       };
 
     case GET_BOOKING_DETAIL_ERROR:
-      return { ...state, isLoading: false, error: action.payload };
+      return { ...state, error: action.payload };
 
     case CREATE_BOOKING_REQUEST:
     case UPDATE_BOOKING_REQUEST:

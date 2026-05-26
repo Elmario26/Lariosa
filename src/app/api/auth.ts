@@ -29,7 +29,10 @@ export interface RegisterResponse {
 export const loginAPI = async (email: string, password: string): Promise<AuthResponse> => {
   const data = await apiRequest<Record<string, unknown>>('/login', {
     method: 'POST',
-    body: { email, password },
+    body: {
+      email: email.trim(),
+      password,
+    },
   });
   return normalizeAuthResponse(data);
 };

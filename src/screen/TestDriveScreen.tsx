@@ -1,4 +1,4 @@
-import React, { useEffect, useState, FC } from 'react';
+import React, { useEffect, useState, useRef, FC } from 'react';
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
@@ -17,8 +17,6 @@ import {
   TextInput,
 
   Image,
-
-  Alert,
 
   ActivityIndicator,
 
@@ -49,6 +47,7 @@ import { getDefaultBookingDateTime, validateFutureBooking } from '../utils/booki
 import { RootState } from '../app/store';
 
 import { ROUTES } from '../utils';
+import { useAppDialog } from '../context/AppDialogContext';
 
 // @ts-ignore
 
@@ -109,6 +108,7 @@ const TestDriveScreen: FC = () => {
   const preselected = route.params?.vehicle;
 
   const dispatch = useDispatch();
+  const dialog = useAppDialog();
 
 
 
@@ -118,7 +118,10 @@ const TestDriveScreen: FC = () => {
 
   );
 
-  const { isSubmitting, error, lastCreatedMessage } = useSelector((s: RootState) => s.bookings);
+  const { isSubmitting, error, lastCreatedMessage, currentBooking } = useSelector(
+    (s: RootState) => s.bookings
+  );
+  const didNavigateToBooking = useRef(false);
 
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
 
@@ -152,51 +155,20 @@ const TestDriveScreen: FC = () => {
 
     if (error) {
 
-      Alert.alert('Booking failed', error, [{ text: 'OK', onPress: () => dispatch(clearBookingError()) }]);
+      dialog.alert('Booking failed', error, () => dispatch(clearBookingError()), 'danger');
 
     }
 
-  }, [error, dispatch]);
+  }, [error, dispatch, dialog]);
 
 
 
   useEffect(() => {
-
-    if (!lastCreatedMessage) return;
-
-    Alert.alert('Request submitted', lastCreatedMessage, [
-
-      {
-
-        text: 'View bookings',
-
-        onPress: () => {
-
-          dispatch(clearBookingSuccessMessage());
-
-          navigation.navigate(ROUTES.MY_APPOINTMENTS);
-
-        },
-
-      },
-
-      {
-
-        text: 'OK',
-
-        onPress: () => {
-
-          dispatch(clearBookingSuccessMessage());
-
-          navigation.goBack();
-
-        },
-
-      },
-
-    ]);
-
-  }, [lastCreatedMessage, navigation, dispatch]);
+    if (!lastCreatedMessage || !currentBooking?.id || didNavigateToBooking.current) return;
+    didNavigateToBooking.current = true;
+    dispatch(clearBookingSuccessMessage());
+    navigation.replace(ROUTES.BOOKING_DETAIL, { bookingId: currentBooking.id });
+  }, [lastCreatedMessage, currentBooking, navigation, dispatch]);
 
 
 
@@ -204,7 +176,7 @@ const TestDriveScreen: FC = () => {
 
     if (!isAuthenticated) {
 
-      Alert.alert('Sign in required', 'Please log in to schedule a test drive.');
+      dialog.alert('Sign in required', 'Please log in to schedule a test drive.', undefined, 'warning');
 
       return;
 
@@ -212,7 +184,7 @@ const TestDriveScreen: FC = () => {
 
     if (!selectedId) {
 
-      Alert.alert('Missing information', 'Please select a vehicle.');
+      dialog.alert('Missing information', 'Please select a vehicle.', undefined, 'warning');
 
       return;
 
@@ -222,7 +194,7 @@ const TestDriveScreen: FC = () => {
 
     if (validationError) {
 
-      Alert.alert('Invalid schedule', validationError);
+      dialog.alert('Invalid schedule', validationError, undefined, 'warning');
 
       return;
 
@@ -248,7 +220,7 @@ const TestDriveScreen: FC = () => {
 
   return (
 
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-app-bg">
 
       <View className="flex-row items-center px-5 py-4 bg-white">
 
@@ -266,15 +238,9 @@ const TestDriveScreen: FC = () => {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
-        <View className="bg-blue-600 px-5 py-6">
+        <View className="bg-app-primary px-5 py-6">
 
           <Text className="text-white font-bold text-2xl">Experience your dream car</Text>
-
-          <Text className="text-blue-100 text-sm mt-1">
-
-            Pick a car and a future date — past times are blocked.
-
-          </Text>
 
         </View>
 
@@ -284,7 +250,7 @@ const TestDriveScreen: FC = () => {
 
           <Text className="text-gray-900 font-bold text-base mb-3">
 
-            Select a vehicle {!selectedId && <Text className="text-red-500">*</Text>}
+            Select a vehicle {!selectedId && <Text className="text-red-500"></Text>}
 
           </Text>
 
@@ -292,7 +258,7 @@ const TestDriveScreen: FC = () => {
 
           {vehiclesLoading && vehicleList.length === 0 ? (
 
-            <ActivityIndicator color="#2563EB" className="mb-6" />
+            <ActivityIndicator color="#76ABAE" className="mb-6" />
 
           ) : (
 
@@ -322,7 +288,7 @@ const TestDriveScreen: FC = () => {
 
                       borderWidth: selected ? 2 : 0,
 
-                      borderColor: '#2563EB',
+                      borderColor: '#76ABAE',
 
                     }}
 
@@ -404,7 +370,7 @@ const TestDriveScreen: FC = () => {
 
             disabled={isSubmitting}
 
-            className="bg-blue-600 px-6 py-4 rounded-2xl mb-20"
+            className="bg-app-primary px-6 py-4 rounded-2xl mb-20"
 
             style={{ opacity: isSubmitting ? 0.7 : 1 }}
 
@@ -416,7 +382,7 @@ const TestDriveScreen: FC = () => {
 
             ) : (
 
-              <Text className="text-white font-bold text-center text-lg">Submit test drive request</Text>
+              <Text className="text-white font-bold text-center text-lg">Book Now</Text>
 
             )}
 

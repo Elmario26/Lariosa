@@ -56,7 +56,7 @@ const getStatusColor = (status: string): { bg: string; text: string } => {
     case 'completed':
       return { bg: '#D1FAE5', text: '#059669' };
     case 'in_progress':
-      return { bg: '#DBEAFE', text: '#2563EB' };
+      return { bg: '#E3EFF0', text: '#76ABAE' };
     case 'cancelled':
       return { bg: '#FEE2E2', text: '#DC2626' };
     default:
@@ -117,7 +117,7 @@ const ServiceHistoryScreen: FC<ServiceHistoryScreenProps> = () => {
   const navigation = useNavigation<any>();
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-app-bg">
       {/* Header */}
       <View className="flex-row items-center px-5 py-4 bg-white">
         <TouchableOpacity onPress={() => navigation.goBack()}>

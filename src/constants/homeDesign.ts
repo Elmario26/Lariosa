@@ -1,15 +1,19 @@
 import { ROUTES } from '../utils';
+import { THEME } from './theme';
 
 export const HOME_COLORS = {
-  background: '#EEF2F6',
-  card: '#FFFFFF',
-  text: '#1F2937',
-  textMuted: '#6B7280',
-  accent: '#2563EB',
+  background: THEME.background,
+  card: THEME.card,
+  text: THEME.text,
+  textOnCard: THEME.text,
+  textMuted: THEME.textMuted,
+  textMutedOnCard: THEME.textMuted,
+  accent: THEME.accent,
+  primary: THEME.primary,
 };
 
 export type HomeServiceAction =
-  | { type: 'route'; route: string }
+  | { type: 'route'; route: string; params?: Record<string, unknown> }
   | { type: 'tab'; tab: string };
 
 export interface HomeServiceTile {
@@ -26,36 +30,36 @@ export const HOME_SERVICE_TILES: HomeServiceTile[] = [
     id: 'test-drive',
     title: 'Test drive',
     icon: 'car-clock',
-    color: '#5BB8E8',
+    color: THEME.accent,
     action: { type: 'route', route: ROUTES.TEST_DRIVE },
   },
   {
     id: 'inventory',
     title: 'Browse inventory',
     icon: 'car-multiple',
-    color: '#34D399',
+    color: '#8BC4C7',
     action: { type: 'tab', tab: ROUTES.INVENTORY },
   },
   {
     id: 'service',
     title: 'Book service',
     icon: 'wrench-clock',
-    color: '#FBBF24',
-    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT },
+    color: THEME.primary,
+    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT, params: { intent: 'service' } },
   },
   {
     id: 'financing',
     title: 'Financing',
     icon: 'calculator-variant',
-    color: '#FB923C',
-    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT },
+    color: '#FF8A65',
+    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT, params: { intent: 'financing' } },
   },
   {
     id: 'trade-in',
     title: 'Trade-in',
     icon: 'swap-horizontal',
-    color: '#1E3A5F',
-    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT },
+    color: THEME.brand,
+    action: { type: 'route', route: ROUTES.BOOK_APPOINTMENT, params: { intent: 'trade-in' } },
   },
 ];
 

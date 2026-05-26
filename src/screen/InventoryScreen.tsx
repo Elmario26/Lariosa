@@ -9,7 +9,6 @@ import {
   TextInput,
   ActivityIndicator,
   FlatList,
-  ScrollView,
   StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,16 +16,26 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ROUTES } from '../utils';
 import { getVehiclesRequest } from '../app/actions';
 import { getCarImageUrl } from '../app/config/api';
-import { SCREEN_PADDING, TAB_BAR_FLOAT_HEIGHT, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
+import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
+import { THEME, CARD_SHADOW } from '../constants/theme';
+import { HOME_COLORS } from '../constants/homeDesign';
+import { getStatusStyle } from '../utils/vehicle';
+import FilterChipRow, { type FilterChipOption } from '../components/FilterChipRow';
 import { RootState } from '../app/store';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const FILTERS = ['All', 'Sedan', 'SUV', 'Truck', 'Hybrid', 'Electric'];
+const FILTER_OPTIONS: FilterChipOption[] = [
+  { key: 'All', label: 'All' },
+  { key: 'Sedan', label: 'Sedan' },
+  { key: 'SUV', label: 'SUV' },
+  { key: 'Truck', label: 'Truck' },
+  { key: 'Hybrid', label: 'Hybrid' },
+  { key: 'Electric', label: 'Electric' },
+];
 
-const FALLBACK_IMAGES = {
-  default: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400',
-};
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400';
 
 interface Vehicle {
   id?: string;
@@ -44,52 +53,76 @@ interface Vehicle {
 }
 
 const getVehicleImage = (vehicle: Vehicle): string => {
-  if (vehicle.images && Array.isArray(vehicle.images) && vehicle.images.length > 0) {
+  if (vehicle.images?.length) {
     return getCarImageUrl(vehicle.images[0]);
   }
-  return FALLBACK_IMAGES.default;
+  return FALLBACK_IMAGE;
 };
 
-const VehicleListItem: FC<{ vehicle: Vehicle; onPress: () => void }> = ({ vehicle, onPress }) => (
-  <TouchableOpacity onPress={onPress} style={styles.vehicleCard} activeOpacity={0.9}>
-    <Image source={{ uri: getVehicleImage(vehicle) }} style={styles.vehicleImage} resizeMode="cover" />
-    <View style={styles.vehicleBody}>
-      <View style={styles.vehicleTitleRow}>
-        <View style={styles.vehicleTitleBlock}>
-          <Text style={styles.vehicleStatus}>{vehicle.status}</Text>
-          <Text style={styles.vehicleName}>
-            {vehicle.brand} {vehicle.make}
-          </Text>
-        </View>
-        <View style={styles.yearBadge}>
-          <Text style={styles.yearText}>{vehicle.Year || vehicle.year}</Text>
-        </View>
-      </View>
+const VehicleListItem: FC<{ vehicle: Vehicle; onPress: () => void }> = ({ vehicle, onPress }) => {
+  const statusStyle = getStatusStyle(vehicle.status);
+  const year = vehicle.Year ?? vehicle.year;
 
-      <View style={styles.specRow}>
-        <View style={styles.specItem}>
-          <Icon name="gas-station" size={16} color="#6B7280" />
-          <Text style={styles.specText}>{vehicle.conditions}</Text>
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.vehicleCard} activeOpacity={0.9}>
+      <Image source={{ uri: getVehicleImage(vehicle) }} style={styles.vehicleImage} resizeMode="cover" />
+      <View style={styles.vehicleBody}>
+        <View style={styles.vehicleTitleRow}>
+          <View style={styles.vehicleTitleBlock}>
+            {vehicle.status ? (
+              <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
+                <Text style={[styles.statusPillText, { color: statusStyle.text }]}>
+                  {statusStyle.label}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.vehicleName}>
+              {vehicle.brand} {vehicle.make}
+            </Text>
+          </View>
+          {year ? (
+            <View style={styles.yearBadge}>
+              <Text style={styles.yearText}>{year}</Text>
+            </View>
+          ) : null}
         </View>
-        <View style={styles.specItem}>
-          <Icon name="speedometer" size={16} color="#6B7280" />
-          <Text style={styles.specText}>{vehicle.Mileage} km</Text>
-        </View>
-        <View style={styles.specItem}>
-          <Icon name="palette" size={16} color="#6B7280" />
-          <Text style={styles.specText}>{vehicle.color}</Text>
-        </View>
-      </View>
 
-      <View style={styles.priceRow}>
-        <Text style={styles.price}>₱{(vehicle.price || 0).toLocaleString()}</Text>
-        <View style={styles.viewBtn}>
-          <Text style={styles.viewBtnText}>View Details</Text>
+        <View style={styles.specRow}>
+          {vehicle.conditions ? (
+            <View style={styles.specChip}>
+              <Icon name="gas-station-outline" size={15} color={THEME.accent} />
+              <Text style={styles.specText} numberOfLines={1}>
+                {vehicle.conditions}
+              </Text>
+            </View>
+          ) : null}
+          {vehicle.Mileage != null ? (
+            <View style={styles.specChip}>
+              <Icon name="speedometer" size={15} color={THEME.accent} />
+              <Text style={styles.specText}>{vehicle.Mileage.toLocaleString()} km</Text>
+            </View>
+          ) : null}
+          {vehicle.color ? (
+            <View style={styles.specChip}>
+              <Icon name="palette-outline" size={15} color={THEME.accent} />
+              <Text style={styles.specText} numberOfLines={1}>
+                {vehicle.color}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>₱{(vehicle.price || 0).toLocaleString()}</Text>
+          <View style={styles.viewBtn}>
+            <Text style={styles.viewBtnText}>View details</Text>
+            <Icon name="arrow-right" size={16} color="#fff" />
+          </View>
         </View>
       </View>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
 type InventoryScreenProps = StackScreenProps<any, 'Inventory'>;
 
@@ -101,7 +134,8 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
-  const listBottomPad = TAB_BAR_FLOAT_HEIGHT + TAB_BAR_BOTTOM_GAP + insets.bottom + 24;
+  const listBottomPad = 72 + TAB_BAR_BOTTOM_GAP + insets.bottom;
+  const vehicleList = Array.isArray(vehicles) ? vehicles : [];
 
   useEffect(() => {
     dispatch(
@@ -115,46 +149,71 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
   const ListHeader = (
     <View style={styles.headerBlock}>
       <Text style={styles.title}>Inventory</Text>
-      <Text style={styles.subtitle}>Browse our collection</Text>
+      <Text style={styles.subtitle}>
+        {isLoading && vehicleList.length === 0
+          ? 'Loading vehicles…'
+          : `${vehicleList.length} vehicle${vehicleList.length === 1 ? '' : 's'} available`}
+      </Text>
 
       <View style={styles.searchBox}>
-        <Icon name="magnify" size={20} color="#6B7280" />
+        <Icon name="magnify" size={22} color={THEME.accent} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search vehicles..."
-          placeholderTextColor="#9CA3AF"
+          placeholder="Search brand, model…"
+          placeholderTextColor={HOME_COLORS.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          returnKeyType="search"
         />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
+            <Icon name="close-circle" size={20} color={HOME_COLORS.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}
-      >
-        {FILTERS.map((filter) => {
-          const active = activeFilter === filter;
-          return (
-            <TouchableOpacity
-              key={filter}
-              onPress={() => setActiveFilter(filter)}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{filter}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <FilterChipRow options={FILTER_OPTIONS} value={activeFilter} onChange={setActiveFilter} />
     </View>
   );
+
+  const ListEmpty = () => {
+    if (isLoading) {
+      return <ActivityIndicator size="large" color={THEME.accent} style={styles.loader} />;
+    }
+    if (error) {
+      return (
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, styles.emptyIconError]}>
+            <Icon name="cloud-off-outline" size={36} color={THEME.error} />
+          </View>
+          <Text style={styles.emptyTitle}>Could not load inventory</Text>
+          <Text style={styles.emptySub}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() =>
+              dispatch(getVehiclesRequest({ search: searchQuery, type: activeFilter }))
+            }
+          >
+            <Text style={styles.retryBtnText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIcon}>
+          <Icon name="car-off" size={40} color={THEME.accent} />
+        </View>
+        <Text style={styles.emptyTitle}>No vehicles found</Text>
+        <Text style={styles.emptySub}>Try another filter or search term.</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <FlatList
-        data={Array.isArray(vehicles) ? vehicles : []}
+        data={vehicleList}
         keyExtractor={(item, index) => String(item.id ?? index)}
         renderItem={({ item }) => (
           <VehicleListItem
@@ -163,19 +222,8 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
           />
         )}
         ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          isLoading ? (
-            <ActivityIndicator size="large" color="#2563EB" style={styles.loader} />
-          ) : error ? (
-            <Text style={styles.emptyError}>{error}</Text>
-          ) : (
-            <Text style={styles.emptyText}>No vehicles found</Text>
-          )
-        }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: listBottomPad, paddingHorizontal: SCREEN_PADDING },
-        ]}
+        ListEmptyComponent={ListEmpty}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPad }]}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -185,84 +233,61 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: HOME_COLORS.background,
   },
   listContent: {
     flexGrow: 1,
+    paddingHorizontal: SCREEN_PADDING,
   },
   headerBlock: {
     paddingTop: 8,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 26,
+    fontWeight: '800',
+    color: HOME_COLORS.text,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: HOME_COLORS.textMuted,
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 18,
+    fontWeight: '500',
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 999,
+    backgroundColor: THEME.card,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingVertical: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
-    color: '#111827',
+    marginLeft: 10,
+    fontSize: 16,
+    color: HOME_COLORS.text,
     paddingVertical: 0,
   },
-  filterScroll: {
-    flexGrow: 0,
-    marginBottom: 8,
-  },
-  filterContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 4,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#F3F4F6',
-    marginRight: 8,
-    alignSelf: 'flex-start',
-  },
-  filterChipActive: {
-    backgroundColor: '#2563EB',
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  filterLabelActive: {
-    color: '#FFFFFF',
-  },
   vehicleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginBottom: 16,
+    backgroundColor: THEME.card,
+    borderRadius: 20,
+    marginBottom: 14,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
   },
   vehicleImage: {
     width: '100%',
-    height: 176,
+    height: 180,
+    backgroundColor: THEME.background,
   },
   vehicleBody: {
     padding: 16,
@@ -274,83 +299,129 @@ const styles = StyleSheet.create({
   },
   vehicleTitleBlock: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
-  vehicleStatus: {
-    fontSize: 11,
-    color: '#6B7280',
+  statusPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   vehicleName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    color: HOME_COLORS.text,
+    lineHeight: 24,
   },
   yearBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: THEME.accentMuted,
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   yearText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#2563EB',
+    fontWeight: '700',
+    color: THEME.accent,
   },
   specRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 12,
+    gap: 8,
+    marginTop: 14,
   },
-  specItem: {
+  specChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: THEME.background,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 5,
+    maxWidth: '100%',
   },
   specText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: HOME_COLORS.textMuted,
+    flexShrink: 1,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME.border,
   },
   price: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '800',
+    color: THEME.primary,
   },
   viewBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 4,
   },
   viewBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   loader: {
-    marginTop: 40,
+    marginTop: 48,
   },
-  emptyText: {
-    textAlign: 'center',
-    color: '#6B7280',
-    marginTop: 40,
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 24,
   },
-  emptyError: {
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyIconError: {
+    backgroundColor: THEME.errorMuted,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: HOME_COLORS.text,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: HOME_COLORS.textMuted,
+    marginTop: 6,
     textAlign: 'center',
-    color: '#DC2626',
-    marginTop: 40,
+  },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: THEME.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });
 

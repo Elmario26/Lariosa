@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
+  avatarText: { fontSize: 18, fontWeight: '700', color: '#76ABAE' },
   profileName: { fontSize: 18, fontWeight: '700', color: '#111827' },
   profileEmail: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   menuRow: {

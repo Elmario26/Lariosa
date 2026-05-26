@@ -23,10 +23,22 @@ export const DELETE_BOOKING_ERROR = 'DELETE_BOOKING_ERROR';
 export const CLEAR_BOOKING_ERROR = 'CLEAR_BOOKING_ERROR';
 export const CLEAR_CURRENT_BOOKING = 'CLEAR_CURRENT_BOOKING';
 
-export const getBookingsRequest = (status?: BookingStatus) => ({
-  type: GET_BOOKINGS_REQUEST,
-  payload: { status },
-});
+export interface GetBookingsOptions {
+  status?: BookingStatus;
+  /** Background poll — no spinner or pull-to-refresh animation */
+  silent?: boolean;
+  /** User pulled to refresh — show refresh indicator only */
+  refresh?: boolean;
+}
+
+export const getBookingsRequest = (options?: GetBookingsOptions | BookingStatus) => {
+  const payload =
+    typeof options === 'string' ? { status: options } : options ?? {};
+  return {
+    type: GET_BOOKINGS_REQUEST,
+    payload,
+  };
+};
 
 export const getBookingDetailRequest = (bookingId: number) => ({
   type: GET_BOOKING_DETAIL_REQUEST,

@@ -77,7 +77,7 @@ const Register: FC<RegisterScreenProps> = ({ navigation }) => {
   return (
     <AuthScreenLayout
       title="Create account"
-      subtitle="Join LaRiosa to schedule test drives and track your bookings."
+      subtitle="Join Ramle Wheels to schedule test drives and track your bookings."
       onBack={() => navigation.goBack()}
       showLogo={false}
       footer={footer}
@@ -85,7 +85,7 @@ const Register: FC<RegisterScreenProps> = ({ navigation }) => {
       <AuthTextField
         label="Full name"
         icon="account-outline"
-        placeholder="John Doe"
+        placeholder="Enter your full name"
         value={fullName}
         onChangeText={setFullName}
         autoCapitalize="words"
@@ -94,7 +94,7 @@ const Register: FC<RegisterScreenProps> = ({ navigation }) => {
       <AuthTextField
         label="Email"
         icon="email-outline"
-        placeholder="you@example.com"
+        placeholder="Enter your email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -104,7 +104,7 @@ const Register: FC<RegisterScreenProps> = ({ navigation }) => {
       <AuthTextField
         label="Password"
         icon="lock-outline"
-        placeholder="At least 6 characters"
+        placeholder="Enter your password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -113,7 +113,7 @@ const Register: FC<RegisterScreenProps> = ({ navigation }) => {
       <AuthTextField
         label="Confirm password"
         icon="lock-check-outline"
-        placeholder="Repeat password"
+        placeholder="Confirm your password"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry

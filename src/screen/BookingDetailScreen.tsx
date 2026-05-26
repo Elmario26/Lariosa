@@ -16,8 +16,6 @@ import {
 
   ActivityIndicator,
 
-  Alert,
-
 } from 'react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -49,6 +47,8 @@ import {
 import { RootState } from '../app/store';
 
 import { ROUTES } from '../utils';
+import { useAppDialog } from '../context/AppDialogContext';
+import { THEME, getBookingStatusStyle } from '../constants/theme';
 
 // @ts-ignore
 
@@ -64,33 +64,8 @@ interface RouteParams {
 
 
 
-const statusStyle = (status: BookingStatus): { bg: string; text: string } => {
-
-  switch (status) {
-
-    case 'approved':
-
-      return { bg: '#DBEAFE', text: '#2563EB' };
-
-    case 'pending':
-
-      return { bg: '#FEF3C7', text: '#D97706' };
-
-    case 'completed':
-
-      return { bg: '#D1FAE5', text: '#059669' };
-
-    case 'rejected':
-
-      return { bg: '#FEE2E2', text: '#DC2626' };
-
-    default:
-
-      return { bg: '#F3F4F6', text: '#6B7280' };
-
-  }
-
-};
+const statusStyle = (status: BookingStatus): { bg: string; text: string } =>
+  getBookingStatusStyle(status);
 
 
 
@@ -103,6 +78,7 @@ const BookingDetailScreen: FC = () => {
   const bookingId = route.params?.bookingId;
 
   const dispatch = useDispatch();
+  const dialog = useAppDialog();
 
   const { currentBooking, isLoading, isSubmitting, error } = useSelector((s: RootState) => s.bookings);
 
@@ -124,11 +100,11 @@ const BookingDetailScreen: FC = () => {
 
     if (error) {
 
-      Alert.alert('Error', error, [{ text: 'OK', onPress: () => dispatch(clearBookingError()) }]);
+      dialog.alert('Error', error, () => dispatch(clearBookingError()), 'danger');
 
     }
 
-  }, [error, dispatch]);
+  }, [error, dispatch, dialog]);
 
 
 
@@ -138,7 +114,7 @@ const BookingDetailScreen: FC = () => {
 
       dispatch(getBookingDetailRequest(bookingId));
 
-      dispatch(getBookingsRequest());
+      dispatch(getBookingsRequest({ silent: true }));
 
     }
 
@@ -150,35 +126,17 @@ const BookingDetailScreen: FC = () => {
 
     if (!bookingId) return;
 
-    Alert.alert(
-
-      'Cancel booking',
-
-      'Remove this test drive request? This cannot be undone.',
-
-      [
-
-        { text: 'Keep', style: 'cancel' },
-
-        {
-
-          text: 'Delete',
-
-          style: 'destructive',
-
-          onPress: () => {
-
-            dispatch(deleteBookingRequest(bookingId));
-
-            navigation.goBack();
-
-          },
-
-        },
-
-      ]
-
-    );
+    dialog.confirm({
+      title: 'Cancel booking',
+      message: 'Remove this test drive request? This cannot be undone.',
+      cancelText: 'Keep',
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: () => {
+        dispatch(deleteBookingRequest(bookingId));
+        navigation.goBack();
+      },
+    });
 
   };
 
@@ -212,7 +170,7 @@ const BookingDetailScreen: FC = () => {
 
   return (
 
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-app-bg">
 
       <View className="flex-row items-center px-5 py-4 bg-white">
 
@@ -226,7 +184,7 @@ const BookingDetailScreen: FC = () => {
 
         <TouchableOpacity onPress={handleRefresh} disabled={isLoading}>
 
-          <Icon name="refresh" size={22} color="#2563EB" />
+          <Icon name="refresh" size={22} color={THEME.accent} />
 
         </TouchableOpacity>
 
@@ -238,7 +196,7 @@ const BookingDetailScreen: FC = () => {
 
         <View className="flex-1 justify-center items-center">
 
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color={THEME.accent} />
 
         </View>
 
@@ -248,7 +206,7 @@ const BookingDetailScreen: FC = () => {
 
           <Text className="text-red-600 text-center">{error}</Text>
 
-          <TouchableOpacity onPress={handleRefresh} className="mt-4 bg-blue-600 px-6 py-3 rounded-xl">
+          <TouchableOpacity onPress={handleRefresh} className="mt-4 bg-app-primary px-6 py-3 rounded-xl">
 
             <Text className="text-white font-semibold">Retry</Text>
 
@@ -336,15 +294,15 @@ const BookingDetailScreen: FC = () => {
 
           {booking.staffRemarks ? (
 
-            <View className="bg-blue-50 p-5 rounded-2xl mb-4 border border-blue-100">
+            <View className="bg-app-accent-muted p-5 rounded-2xl mb-4 border border-app-accent/30">
 
-              <Text className="text-blue-900 font-bold text-base mb-2">Staff remarks</Text>
+              <Text className="text-app-bg font-bold text-base mb-2">Staff remarks</Text>
 
-              <Text className="text-blue-800">{booking.staffRemarks}</Text>
+              <Text className="text-gray-700">{booking.staffRemarks}</Text>
 
               {booking.approvedAt && (
 
-                <Text className="text-blue-600 text-xs mt-2">Updated {booking.approvedAt}</Text>
+                <Text className="text-app-accent text-xs mt-2">Updated {booking.approvedAt}</Text>
 
               )}
 
@@ -364,7 +322,7 @@ const BookingDetailScreen: FC = () => {
 
                 disabled={isSubmitting}
 
-                className="flex-1 flex-row items-center justify-center bg-blue-600 py-3.5 rounded-xl"
+                className="flex-1 flex-row items-center justify-center bg-app-primary py-3.5 rounded-xl"
 
                 style={{ opacity: isSubmitting ? 0.7 : 1 }}
 

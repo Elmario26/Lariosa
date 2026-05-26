@@ -1,4 +1,4 @@
-import { takeLatest, put, call, select } from 'redux-saga/effects';
+import { takeLatest, takeLeading, put, call, select } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
 import { AnyAction } from 'redux';
 import {
@@ -86,7 +86,8 @@ export function* getFeaturedVehiclesAsync(): SagaIterator {
 }
 
 export function* vehiclesSaga(): SagaIterator {
-  yield takeLatest(GET_VEHICLES_REQUEST, getVehiclesAsync);
+  // takeLeading avoids cancelling an in-flight fetch (shows as "Network request failed" on Android)
+  yield takeLeading(GET_VEHICLES_REQUEST, getVehiclesAsync);
   yield takeLatest(GET_VEHICLE_DETAIL_REQUEST, getVehicleDetailAsync);
-  yield takeLatest(GET_FEATURED_VEHICLES_REQUEST, getFeaturedVehiclesAsync);
+  yield takeLeading(GET_FEATURED_VEHICLES_REQUEST, getFeaturedVehiclesAsync);
 }

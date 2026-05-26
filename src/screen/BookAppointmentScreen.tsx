@@ -1,4 +1,4 @@
-import React, { useState, FC } from 'react';
+import React, { useEffect, useState, FC } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import {
@@ -8,182 +8,385 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
-  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSelector } from 'react-redux';
+import { useAppDialog } from '../context/AppDialogContext';
+import BookingDateTimePicker from '../components/BookingDateTimePicker';
+import ServicePicker from '../components/ServicePicker';
+import { INTENT_DEFAULT_SERVICE, getPmsServiceById } from '../constants/pmsServices';
+import { submitServiceBookingRequest } from '../app/api/serviceBookings';
+import { formatDateTimeFromDates } from '../app/api/bookings';
+import { getDefaultBookingDateTime, validateFutureBooking } from '../utils/bookingDateTime';
+import { HOME_COLORS } from '../constants/homeDesign';
+import { THEME, CARD_SHADOW } from '../constants/theme';
+import { RootState } from '../app/store';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-const SERVICES = [
-  { id: '1', name: 'Test Drive', icon: 'car-clock' },
-  { id: '2', name: 'Vehicle Service', icon: 'wrench' },
-  { id: '3', name: 'Consultation', icon: 'account-tie' },
-  { id: '4', name: 'Trade-In', icon: 'swap-horizontal' },
-];
-
-const TIME_SLOTS = [
-  '9:00 AM',
-  '10:00 AM',
-  '11:00 AM',
-  '1:00 PM',
-  '2:00 PM',
-  '3:00 PM',
-  '4:00 PM',
-];
 
 interface Vehicle {
   year?: number;
   brand: string;
   model?: string;
   make?: string;
-  [key: string]: any;
 }
+
+export type BookAppointmentIntent = 'service' | 'financing' | 'trade-in';
 
 interface RouteParams {
   vehicle?: Vehicle;
+  intent?: BookAppointmentIntent;
 }
 
 type BookAppointmentScreenProps = StackScreenProps<any, 'BookAppointment'>;
 
+const INTENT_COPY: Record<
+  BookAppointmentIntent,
+  { title: string; headline: string; sub: string }
+> = {
+  service: {
+    title: 'Book service',
+    headline: 'Keep your vehicle in top shape',
+    sub: 'Oil change, tires, PMS packages & more',
+  },
+  financing: {
+    title: 'Financing inquiry',
+    headline: 'Explore payment options',
+    sub: 'We will contact you about financing',
+  },
+  'trade-in': {
+    title: 'Trade-in valuation',
+    headline: 'Get a fair trade-in estimate',
+    sub: 'Tell us about your vehicle',
+  },
+};
+
 const BookAppointmentScreen: FC<BookAppointmentScreenProps> = () => {
   const navigation = useNavigation<any>();
+  const dialog = useAppDialog();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { vehicle } = (route.params as RouteParams) || {};
+  const { vehicle, intent = 'service' } = (route.params as RouteParams) || {};
 
-  const [selectedService, setSelectedService] = useState('1');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [notes, setNotes] = useState('');
-  const [name, setName] = useState('');
+  const { user, isAuthenticated, token } = useSelector((s: RootState) => s.auth);
+
+  const copy = INTENT_COPY[intent];
+  const defaults = getDefaultBookingDateTime();
+
+  const [selectedServiceId, setSelectedServiceId] = useState(
+    INTENT_DEFAULT_SERVICE[intent] ?? INTENT_DEFAULT_SERVICE.service
+  );
+  const [bookingDate, setBookingDate] = useState(defaults.date);
+  const [bookingTime, setBookingTime] = useState(defaults.time);
+  const [vehicleYear, setVehicleYear] = useState(vehicle?.year ? String(vehicle.year) : '');
+  const [vehicleBrand, setVehicleBrand] = useState(vehicle?.brand ?? '');
+  const [vehicleModel, setVehicleModel] = useState(vehicle?.model ?? vehicle?.make ?? '');
   const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (): void => {
-    if (!name || !phone || !selectedDate || !selectedTime) {
-      Alert.alert('Missing Information', 'Please fill in all required fields');
+  useEffect(() => {
+    if (user?.phone) setPhone(user.phone);
+  }, [user?.phone]);
+
+  const buildVehicleDescription = (): string => {
+    const parts = [vehicleYear, vehicleBrand, vehicleModel].filter(Boolean);
+    return parts.join(' ').trim();
+  };
+
+  const handleSubmit = async (): Promise<void> => {
+    if (!isAuthenticated) {
+      dialog.alert('Sign in required', 'Please log in to book a service appointment.', undefined, 'warning');
       return;
     }
-    Alert.alert(
-      'Booking Confirmed',
-      'Your appointment has been scheduled. You will receive a confirmation shortly.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+
+    const vehicleDescription = buildVehicleDescription();
+    if (!vehicleBrand.trim() || !vehicleModel.trim()) {
+      dialog.alert('Vehicle required', 'Enter your vehicle brand and model.', undefined, 'warning');
+      return;
+    }
+
+    if (!phone.trim()) {
+      dialog.alert('Phone required', 'Enter a contact number so we can confirm your appointment.', undefined, 'warning');
+      return;
+    }
+
+    const validationError = validateFutureBooking(bookingDate, bookingTime);
+    if (validationError) {
+      dialog.alert('Invalid schedule', validationError, undefined, 'warning');
+      return;
+    }
+
+    const service = getPmsServiceById(selectedServiceId);
+    if (!service) {
+      dialog.alert('Select a service', 'Choose the service you need from the list.', undefined, 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await submitServiceBookingRequest(
+        {
+          serviceId: service.id,
+          serviceName: service.name,
+          vehicleDescription,
+          requestedDateTime: formatDateTimeFromDates(bookingDate, bookingTime),
+          phone: phone.trim(),
+          notes: notes.trim() || undefined,
+        },
+        token
+      );
+
+      dialog.alert(
+        'Request submitted',
+        `Your ${service.name.toLowerCase()} appointment is saved. Our team will confirm by phone shortly.`,
+        () => navigation.goBack(),
+        'success'
+      );
+    } catch (err: unknown) {
+      const message =
+        (err as { message?: string })?.message ?? 'Could not save your request. Please try again.';
+      dialog.alert('Booking failed', message, undefined, 'danger');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 bg-white">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Icon name="arrow-left" size={24} color="#374151" />
         </TouchableOpacity>
-        <Text className="text-gray-900 font-bold text-xl ml-4">Book Appointment</Text>
+        <Text style={styles.headerTitle}>{copy.title}</Text>
       </View>
 
-      <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
-        {/* Vehicle Info (if from vehicle detail) */}
-        {vehicle && (
-          <View className="bg-blue-50 p-4 rounded-2xl mb-4">
-            <Text className="text-blue-600 text-sm font-medium">Booking for:</Text>
-            <Text className="text-gray-900 font-bold text-lg mt-1">
-              {vehicle.year} {vehicle.brand} {vehicle.model || vehicle.make}
-            </Text>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.hero}>
+            <View style={styles.heroIcon}>
+              <Icon name="wrench-clock" size={28} color="#fff" />
+            </View>
+            <Text style={styles.heroTitle}>{copy.headline}</Text>
+            <Text style={styles.heroSub}>{copy.sub}</Text>
           </View>
-        )}
 
-        {/* Service Type */}
-        <Text className="text-gray-900 font-bold text-base mb-3">Service Type</Text>
-        <View className="flex-row flex-wrap mb-6">
-          {SERVICES.map((service) => (
-            <TouchableOpacity
-              key={service.id}
-              onPress={() => setSelectedService(service.id)}
-              className={`flex-row items-center px-4 py-3 rounded-xl mr-2 mb-2 ${
-                selectedService === service.id ? 'bg-blue-600' : 'bg-white'
-              }`}
-              style={{ elevation: selectedService === service.id ? 0 : 1 }}
-            >
-              <Icon
-                name={service.icon}
-                size={18}
-                color={selectedService === service.id ? '#fff' : '#6B7280'}
+          <View style={styles.body}>
+            {vehicle && (
+              <View style={styles.vehicleBanner}>
+                <Icon name="car" size={20} color={THEME.primary} />
+                <View style={styles.vehicleBannerText}>
+                  <Text style={styles.vehicleBannerLabel}>From inventory</Text>
+                  <Text style={styles.vehicleBannerValue}>
+                    {vehicle.year} {vehicle.brand} {vehicle.model || vehicle.make}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <Text style={styles.sectionTitle}>Service</Text>
+            <ServicePicker
+              value={selectedServiceId}
+              onChange={setSelectedServiceId}
+              disabled={isSubmitting}
+            />
+
+            <Text style={[styles.sectionTitle, styles.sectionGap]}>Your vehicle</Text>
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <View style={styles.fieldHalf}>
+                  <Text style={styles.fieldLabel}>Year</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 2022"
+                    placeholderTextColor="#9CA3AF"
+                    value={vehicleYear}
+                    onChangeText={setVehicleYear}
+                    keyboardType="number-pad"
+                    editable={!isSubmitting}
+                  />
+                </View>
+                <View style={[styles.fieldHalf, styles.fieldHalfRight]}>
+                  <Text style={styles.fieldLabel}>Brand *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Toyota"
+                    placeholderTextColor="#9CA3AF"
+                    value={vehicleBrand}
+                    onChangeText={setVehicleBrand}
+                    editable={!isSubmitting}
+                  />
+                </View>
+              </View>
+              <Text style={[styles.fieldLabel, styles.fieldLabelGap]}>Model *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Camry"
+                placeholderTextColor="#9CA3AF"
+                value={vehicleModel}
+                onChangeText={setVehicleModel}
+                editable={!isSubmitting}
               />
-              <Text
-                className={`ml-2 font-medium text-sm ${
-                  selectedService === service.id ? 'text-white' : 'text-gray-700'
-                }`}
-              >
-                {service.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
 
-        {/* Personal Info */}
-        <Text className="text-gray-900 font-bold text-base mb-3">Personal Information</Text>
-        <View className="bg-white p-4 rounded-2xl mb-6" style={{ elevation: 1 }}>
-          <Text className="text-gray-500 text-sm mb-2">Full Name *</Text>
-          <TextInput
-            className="border-b border-gray-200 py-2 text-gray-900"
-            placeholder="Enter your full name"
-            value={name}
-            onChangeText={setName}
-          />
+            <Text style={[styles.sectionTitle, styles.sectionGap]}>Preferred date & time</Text>
+            <BookingDateTimePicker
+              date={bookingDate}
+              time={bookingTime}
+              onDateChange={setBookingDate}
+              onTimeChange={setBookingTime}
+              disabled={isSubmitting}
+            />
 
-          <Text className="text-gray-500 text-sm mb-2 mt-4">Phone Number *</Text>
-          <TextInput
-            className="border-b border-gray-200 py-2 text-gray-900"
-            placeholder="Enter your phone number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-        </View>
+            <Text style={[styles.sectionTitle, styles.sectionGap]}>Contact</Text>
+            <View style={styles.card}>
+              <Text style={styles.fieldLabel}>Phone number *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="+63 9XX XXX XXXX"
+                placeholderTextColor="#9CA3AF"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                editable={!isSubmitting}
+              />
+            </View>
 
-        {/* Date Selection */}
-        <Text className="text-gray-900 font-bold text-base mb-3">Preferred Date</Text>
-        <TouchableOpacity
-          className="bg-white p-4 rounded-2xl mb-6 flex-row items-center justify-between"
-          style={{ elevation: 1 }}
-        >
-          <View className="flex-row items-center">
-            <Icon name="calendar" size={20} color="#2563EB" />
-            <Text className="text-gray-700 ml-3">{selectedDate || 'Select a date'}</Text>
-          </View>
-          <Icon name="chevron-right" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
+            <Text style={[styles.sectionTitle, styles.sectionGap]}>Notes (optional)</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Mileage, symptoms, preferred bay time…"
+              placeholderTextColor="#9CA3AF"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              editable={!isSubmitting}
+            />
 
-        {/* Time Slots */}
-        <Text className="text-gray-900 font-bold text-base mb-3">Preferred Time</Text>
-        <View className="flex-row flex-wrap mb-6">
-          {TIME_SLOTS.map((time) => (
             <TouchableOpacity
-              key={time}
-              onPress={() => setSelectedTime(time)}
-              className={`px-4 py-2 rounded-xl mr-2 mb-2 ${
-                selectedTime === time ? 'bg-blue-600' : 'bg-white'
-              }`}
-              style={{ elevation: selectedTime === time ? 0 : 1 }}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+              activeOpacity={0.9}
             >
-              <Text
-                className={`font-medium text-sm ${
-                  selectedTime === time ? 'text-white' : 'text-gray-700'
-                }`}
-              >
-                {time}
-              </Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Icon name="calendar-check" size={22} color="#fff" style={styles.submitIcon} />
+                  <Text style={styles.submitText}>Confirm service appointment</Text>
+                </>
+              )}
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          onPress={handleSubmit}
-          className="bg-blue-600 px-6 py-4 rounded-2xl mb-6"
-        >
-          <Text className="text-white font-bold text-center text-lg">Confirm Booking</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: HOME_COLORS.background },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: THEME.card,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.cardBorder,
+  },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: THEME.text, marginLeft: 14 },
+  scroll: { paddingBottom: 40 },
+  hero: {
+    backgroundColor: THEME.primary,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 28,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
+  heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+  body: { paddingHorizontal: 20, paddingTop: 20 },
+  vehicleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.primaryMuted,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  vehicleBannerText: { marginLeft: 12, flex: 1 },
+  vehicleBannerLabel: { fontSize: 12, color: THEME.primary, fontWeight: '600' },
+  vehicleBannerValue: { fontSize: 16, fontWeight: '700', color: THEME.text, marginTop: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: THEME.text, marginBottom: 10 },
+  sectionGap: { marginTop: 22 },
+  card: {
+    backgroundColor: THEME.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
+  },
+  row: { flexDirection: 'row' },
+  fieldHalf: { flex: 1 },
+  fieldHalfRight: { marginLeft: 12 },
+  fieldLabel: { fontSize: 12, color: '#6B7280', fontWeight: '600', marginBottom: 6 },
+  fieldLabelGap: { marginTop: 14 },
+  input: {
+    fontSize: 16,
+    color: '#111827',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingVertical: 8,
+  },
+  notesInput: {
+    backgroundColor: THEME.card,
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 96,
+    fontSize: 15,
+    color: THEME.text,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
+  },
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  submitBtnDisabled: { opacity: 0.7 },
+  submitIcon: { marginRight: 8 },
+  submitText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+});
 
 export default BookAppointmentScreen;

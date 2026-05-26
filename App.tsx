@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { store, persistor } from './src/app/store';
 import type { RootState } from './src/app/store';
 import Navigation from './src/navigation';
+import { AppDialogProvider } from './src/context/AppDialogContext';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Toast from 'react-native-toast-message';
 // import { GET_USER_REQUEST } from './src/app/actions';
@@ -17,9 +18,11 @@ const AppContent: FC = () => {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <Navigation />
-      <Toast />
+      <AppDialogProvider>
+        <StatusBar barStyle="dark-content" />
+        <Navigation />
+        <Toast />
+      </AppDialogProvider>
     </SafeAreaProvider>
   );
 };

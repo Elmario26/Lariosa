@@ -7,6 +7,7 @@ import {
   getTodayStart,
   clampTimeIfToday,
 } from '../utils/bookingDateTime';
+import { THEME } from '../constants/theme';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -49,7 +50,7 @@ const BookingDateTimePicker: FC<BookingDateTimePickerProps> = ({
         activeOpacity={0.85}
       >
         <View style={styles.iconBox}>
-          <Icon name="calendar-month" size={22} color="#2563EB" />
+          <Icon name="calendar-month" size={22} color={THEME.accent} />
         </View>
         <View style={styles.fieldText}>
           <Text style={styles.label}>Date</Text>
@@ -82,7 +83,7 @@ const BookingDateTimePicker: FC<BookingDateTimePickerProps> = ({
         activeOpacity={0.85}
       >
         <View style={styles.iconBox}>
-          <Icon name="clock-outline" size={22} color="#2563EB" />
+          <Icon name="clock-outline" size={22} color={THEME.accent} />
         </View>
         <View style={styles.fieldText}>
           <Text style={styles.label}>Time</Text>
@@ -119,11 +120,11 @@ const styles = StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: THEME.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: THEME.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: THEME.accentMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -146,11 +147,11 @@ const styles = StyleSheet.create({
   value: { fontSize: 16, color: '#111827', fontWeight: '600' },
   pickerShell: {
     marginTop: 8,
-    backgroundColor: '#fff',
+    backgroundColor: THEME.card,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: THEME.cardBorder,
   },
   doneBtn: {
     alignItems: 'center',
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-  doneText: { color: '#2563EB', fontWeight: '700', fontSize: 16 },
+  doneText: { color: THEME.accent, fontWeight: '700', fontSize: 16 },
   hint: { fontSize: 12, color: '#9CA3AF', marginTop: 10, marginLeft: 4 },
 });
 

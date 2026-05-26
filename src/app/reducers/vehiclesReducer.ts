@@ -72,9 +72,9 @@ const vehiclesReducer = (state: VehiclesState = initialState, action: VehiclesAc
         error: null,
       };
     case GET_VEHICLES_SUCCESS: {
-      // Handle different response formats: { data: [...] }, { 'hydra:member': [...] }, or [...]
-      const vehiclesData =
-        action.payload.data || action.payload['hydra:member'] || action.payload || [];
+      const vehiclesData = Array.isArray(action.payload)
+        ? action.payload
+        : action.payload.data || action.payload['hydra:member'] || action.payload || [];
       return {
         ...state,
         isLoading: false,
@@ -123,9 +123,9 @@ const vehiclesReducer = (state: VehiclesState = initialState, action: VehiclesAc
         error: null,
       };
     case GET_FEATURED_VEHICLES_SUCCESS: {
-      // Handle different response formats: { data: [...] }, { 'hydra:member': [...] }, or [...]
-      const featuredData =
-        action.payload.data || action.payload['hydra:member'] || action.payload || [];
+      const featuredData = Array.isArray(action.payload)
+        ? action.payload
+        : action.payload.data || action.payload['hydra:member'] || action.payload || [];
       return {
         ...state,
         isLoading: false,

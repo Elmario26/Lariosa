@@ -1,16 +1,28 @@
 import React, { useEffect, useState, FC } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import Toast from 'react-native-toast-message';
 
-import AuthScreenLayout from '../../components/auth/AuthScreenLayout';
 import AuthTextField from '../../components/auth/AuthTextField';
 import AuthPrimaryButton from '../../components/auth/AuthPrimaryButton';
 import { ROUTES } from '../../utils';
-import { AUTH_COLORS } from '../../constants/authDesign';
+import { LOGIN_THEME } from '../../constants/authDesign';
+import { LOGIN_LOGO } from '../../constants/assets';
 import { RootState } from '../../app/store';
 import { userLoginRequest } from '../../app/actions';
 import { AuthNavProps } from '../../navigation/AuthNav';
@@ -22,10 +34,15 @@ type LoginScreenProps = StackScreenProps<any, 'Login'>;
 const Login: FC<LoginScreenProps> = () => {
   const navigation = useNavigation<AuthNavProps>();
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const logoWidth = Math.min(screenWidth * 0.72, 280);
+  const logoHeight = Math.min(logoWidth * 0.58, 150);
 
   useEffect(() => {
     if (error) {
@@ -40,7 +57,12 @@ const Login: FC<LoginScreenProps> = () => {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const userData = userInfo as { user?: { email?: string }; email?: string; idToken?: string; serverAuthCode?: string };
+      const userData = userInfo as {
+        user?: { email?: string };
+        email?: string;
+        idToken?: string;
+        serverAuthCode?: string;
+      };
       dispatch(
         userLoginRequest({
           email: userData.user?.email || userData.email || '',
@@ -75,91 +97,174 @@ const Login: FC<LoginScreenProps> = () => {
     dispatch(userLoginRequest({ email, password }));
   };
 
-  const footer = (
-    <Text style={styles.footerText}>
-      Don&apos;t have an account?{' '}
-      <Text style={styles.footerLink} onPress={() => navigation.navigate(ROUTES.REGISTER)}>
-        Sign up
-      </Text>
-    </Text>
-  );
-
   return (
-    <AuthScreenLayout
-      title="Welcome back"
-      subtitle="Sign in to browse cars, book test drives, and manage appointments."
-      footer={footer}
-    >
-      <AuthTextField
-        label="Email"
-        icon="email-outline"
-        placeholder="you@example.com"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" backgroundColor={LOGIN_THEME.backdrop} />
 
-      <AuthTextField
-        label="Password"
-        icon="lock-outline"
-        placeholder="Your password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <AuthPrimaryButton
-        label="Sign in"
-        onPress={handleLogin}
-        loading={isLoading}
-        style={styles.primaryBtn}
-      />
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or continue with</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <TouchableOpacity
-        style={styles.googleBtn}
-        onPress={handleGoogleSignIn}
-        disabled={isLoading}
-        activeOpacity={0.85}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Icon name="google" size={22} color="#4285F4" />
-        <Text style={styles.googleText}>Continue with Google</Text>
-      </TouchableOpacity>
-    </AuthScreenLayout>
+        <View style={styles.flex}>
+          <View style={[styles.logoSection, { paddingTop: insets.top + 8 }]}>
+            <Image
+              source={LOGIN_LOGO}
+              style={[styles.logo, { width: logoWidth, height: logoHeight }]}
+              resizeMode="contain"
+              accessibilityLabel="RW Trading logo"
+            />
+          </View>
+
+          <ScrollView
+            style={styles.panelScroll}
+            contentContainerStyle={styles.panelScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.authPanel}>
+            <Text style={styles.title}>Login to your account</Text>
+
+            <AuthTextField
+              variant="loginMono"
+              placeholder="Email"
+              placeholderTextColor={LOGIN_THEME.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <AuthTextField
+              variant="loginMono"
+              placeholder="Password"
+              placeholderTextColor={LOGIN_THEME.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <AuthPrimaryButton
+              label="Sign in"
+              onPress={handleLogin}
+              loading={isLoading}
+              style={styles.primaryBtn}
+            />
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>Or sign in with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleSignIn}
+              disabled={isLoading}
+              activeOpacity={0.85}
+            >
+              <Icon name="google" size={24} color="#5F5F5F" />
+            </TouchableOpacity>
+
+            <Text style={styles.footer}>
+              Don&apos;t have an account?{' '}
+              <Text style={styles.footerLink} onPress={() => navigation.navigate(ROUTES.REGISTER)}>
+                Sign up
+              </Text>
+            </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  primaryBtn: { marginTop: 4 },
+  root: {
+    flex: 1,
+    backgroundColor: LOGIN_THEME.backdrop,
+  },
+  flex: { flex: 1 },
+  logoSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+    backgroundColor: LOGIN_THEME.backdrop,
+  },
+  logo: {
+    maxHeight: 150,
+  },
+  panelScroll: {
+    flex: 1,
+    marginTop: -12,
+  },
+  panelScrollContent: {
+    flexGrow: 1,
+  },
+  authPanel: {
+    flex: 1,
+    backgroundColor: LOGIN_THEME.panel,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderColor: LOGIN_THEME.panelBorder,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 28,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: LOGIN_THEME.title,
+    marginBottom: 24,
+    letterSpacing: -0.3,
+  },
+  primaryBtn: {
+    marginTop: 8,
+    backgroundColor: LOGIN_THEME.button,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 22,
-    gap: 10,
+    marginVertical: 20,
+    gap: 12,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: AUTH_COLORS.border },
-  dividerText: { fontSize: 12, color: AUTH_COLORS.textMuted, fontWeight: '600' },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: LOGIN_THEME.divider,
+  },
+  dividerText: {
+    fontSize: 13,
+    color: LOGIN_THEME.textMuted,
+    fontWeight: '500',
+  },
   googleBtn: {
-    flexDirection: 'row',
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: LOGIN_THEME.googleBtn,
+    borderWidth: 1,
+    borderColor: LOGIN_THEME.googleBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: AUTH_COLORS.border,
-    backgroundColor: '#fff',
-    gap: 10,
   },
-  googleText: { fontSize: 15, fontWeight: '600', color: AUTH_COLORS.text },
-  footerText: { fontSize: 15, color: AUTH_COLORS.textMuted },
-  footerLink: { color: AUTH_COLORS.primary, fontWeight: '700' },
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 15,
+    color: LOGIN_THEME.footer,
+  },
+  footerLink: {
+    color: LOGIN_THEME.footerLink,
+    fontWeight: '700',
+  },
 });
 
 export default Login;

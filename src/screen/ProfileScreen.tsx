@@ -1,234 +1,390 @@
 import React, { FC, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { ROUTES } from '../utils';
 import { getUserRequest, logoutRequest } from '../app/actions';
 import { RootState } from '../app/store';
 import { formatUserRole, getUserDisplayName, getUserInitials } from '../utils/user';
+import { HOME_COLORS } from '../constants/homeDesign';
+import { THEME, CARD_SHADOW } from '../constants/theme';
+import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-interface MenuItem {
+interface QuickAction {
   id: string;
-  title: string;
-  subtitle?: string;
+  label: string;
   icon: string;
   color: string;
-  action: string;
+  bg: string;
+  onPress: () => void;
 }
 
-interface SettingsItem {
+interface SettingsRow {
   id: string;
   title: string;
   icon: string;
-  action: string;
+  onPress?: () => void;
 }
 
-const MENU_ITEMS: MenuItem[] = [
-  {
-    id: '1',
-    title: 'My Vehicles',
-    subtitle: 'View your owned vehicles',
-    icon: 'car-multiple',
-    color: '#2563EB',
-    action: 'vehicles',
-  },
-  {
-    id: '2',
-    title: 'Service History',
-    subtitle: 'Past maintenance records',
-    icon: 'history',
-    color: '#059669',
-    action: ROUTES.SERVICE_HISTORY,
-  },
-  {
-    id: '3',
-    title: 'Saved Vehicles',
-    subtitle: 'Your favorite listings',
-    icon: 'heart',
-    color: '#DC2626',
-    action: 'favorites',
-  },
-  {
-    id: '4',
-    title: 'Documents',
-    subtitle: 'Warranty, insurance & more',
-    icon: 'file-document',
-    color: '#7C3AED',
-    action: 'documents',
-  },
-];
-
-const SETTINGS_ITEMS: SettingsItem[] = [
-  {
-    id: '1',
-    title: 'Edit Profile',
-    icon: 'account-edit',
-    action: 'edit_profile',
-  },
-  {
-    id: '2',
-    title: 'Notifications',
-    icon: 'bell-outline',
-    action: 'notifications',
-  },
-  {
-    id: '3',
-    title: 'Payment Methods',
-    icon: 'credit-card',
-    action: 'payment',
-  },
-  {
-    id: '4',
-    title: 'Help & Support',
-    icon: 'help-circle',
-    action: 'support',
-  },
-];
-
-const MenuItem: FC<{ item: MenuItem; onPress: () => void }> = ({ item, onPress }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="flex-row items-center bg-white p-4 rounded-xl mb-3"
-    style={{ elevation: 1 }}
-  >
-    <View
-      className="w-12 h-12 rounded-xl justify-center items-center mr-4"
-      style={{ backgroundColor: item.color + '15' }}
-    >
-      <Icon name={item.icon} size={24} color={item.color} />
-    </View>
-    <View className="flex-1">
-      <Text className="text-gray-900 font-semibold text-base">{item.title}</Text>
-      {item.subtitle && (
-        <Text className="text-gray-500 text-sm mt-0.5">{item.subtitle}</Text>
-      )}
-    </View>
-    <Icon name="chevron-right" size={20} color="#9CA3AF" />
-  </TouchableOpacity>
-);
-
-const SettingItem: FC<{ item: SettingsItem; onPress: () => void }> = ({ item, onPress }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="flex-row items-center bg-white px-4 py-3 border-b border-gray-100"
-  >
-    <Icon name={item.icon} size={20} color="#6B7280" />
-    <Text className="text-gray-700 font-medium text-base ml-4 flex-1">{item.title}</Text>
-    <Icon name="chevron-right" size={16} color="#9CA3AF" />
-  </TouchableOpacity>
-);
-
 type ProfileScreenProps = StackScreenProps<any, 'Profile'>;
-
-const ProfileDetail: FC<{ label: string; value?: string | null }> = ({ label, value }) => {
-  if (!value) return null;
-  return (
-    <View className="flex-row justify-between py-3 border-b border-gray-100">
-      <Text className="text-gray-500 text-sm">{label}</Text>
-      <Text className="text-gray-900 font-medium text-sm flex-1 text-right ml-4">{value}</Text>
-    </View>
-  );
-};
 
 const ProfileScreen: FC<ProfileScreenProps> = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     dispatch(getUserRequest());
   }, [dispatch]);
 
-  const handleLogout = (): void => {
-    dispatch(logoutRequest());
-  };
-
   const displayName = getUserDisplayName(user);
+  const bottomPad = 72 + insets.bottom + TAB_BAR_BOTTOM_GAP;
+
+  const quickActions: QuickAction[] = [
+    {
+      id: 'appointments',
+      label: 'Appointments',
+      icon: 'calendar-check-outline',
+      color: THEME.accent,
+      bg: THEME.accentMuted,
+      onPress: () => navigation.navigate(ROUTES.MY_APPOINTMENTS),
+    },
+    {
+      id: 'service',
+      label: 'Book service',
+      icon: 'wrench-clock',
+      color: THEME.primary,
+      bg: THEME.primaryMuted,
+      onPress: () => navigation.navigate(ROUTES.BOOK_APPOINTMENT, { intent: 'service' }),
+    },
+    {
+      id: 'history',
+      label: 'Service history',
+      icon: 'history',
+      color: THEME.success,
+      bg: THEME.successMuted,
+      onPress: () => navigation.navigate(ROUTES.SERVICE_HISTORY),
+    },
+    {
+      id: 'inventory',
+      label: 'Inventory',
+      icon: 'car-outline',
+      color: THEME.brand,
+      bg: '#E8EAED',
+      onPress: () => navigation.navigate(ROUTES.INVENTORY),
+    },
+  ];
+
+  const settingsRows: SettingsRow[] = [
+    { id: 'edit', title: 'Edit profile', icon: 'account-edit-outline' },
+    { id: 'notifications', title: 'Notifications', icon: 'bell-outline' },
+    { id: 'help', title: 'Help & support', icon: 'help-circle-outline' },
+  ];
+
+  const accountFields = [
+    { label: 'Email', value: user?.email },
+    { label: 'Phone', value: user?.phone },
+    { label: 'Username', value: user?.username },
+    { label: 'Status', value: user?.status },
+  ].filter((f) => f.value);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View className="bg-white px-5 py-8 border-b border-gray-100">
-          <View className="flex-row items-center mb-4">
-            <View className="w-16 h-16 rounded-full bg-blue-600 justify-center items-center">
-              <Text className="text-white font-bold text-lg">{getUserInitials(user)}</Text>
-            </View>
-            <View className="ml-4 flex-1">
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profile</Text>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+      >
+        {/* Profile hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
               {isLoading && !user?.fullName ? (
-                <ActivityIndicator size="small" color="#2563EB" />
+                <ActivityIndicator color={THEME.textInverse} />
               ) : (
-                <>
-                  <Text className="text-gray-900 font-bold text-xl">{displayName}</Text>
-                  {user?.role ? (
-                    <Text className="text-blue-600 text-sm mt-1 font-medium">
-                      {formatUserRole(user.role)}
-                    </Text>
-                  ) : null}
-                  <Text className="text-gray-500 text-sm mt-1">{user?.email || '—'}</Text>
-                </>
+                <Text style={styles.avatarText}>{getUserInitials(user)}</Text>
               )}
             </View>
           </View>
+          <Text style={styles.name}>{displayName}</Text>
+          {user?.role ? (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>{formatUserRole(user.role)}</Text>
+            </View>
+          ) : null}
+          <Text style={styles.email}>{user?.email || '—'}</Text>
         </View>
 
-        {/* Account details from Symfony /api/me */}
-        <View className="px-5 pt-6">
-          <Text className="text-gray-900 font-bold text-base mb-3">Account Details</Text>
-          <View className="bg-white rounded-xl px-4">
-            <ProfileDetail label="Username" value={user?.username} />
-            <ProfileDetail label="Email" value={user?.email} />
-            <ProfileDetail label="Phone" value={user?.phone} />
-            <ProfileDetail label="Status" value={user?.status} />
-          </View>
-        </View>
-
-        {/* Menu Items */}
-        <View className="px-5 py-6">
-          <Text className="text-gray-900 font-bold text-base mb-4">Quick Links</Text>
-          {MENU_ITEMS.map((item) => (
-            <MenuItem
-              key={item.id}
-              item={item}
-              onPress={() => {
-                if (item.action === ROUTES.SERVICE_HISTORY) {
-                  navigation.navigate(ROUTES.SERVICE_HISTORY);
-                }
-              }}
-            />
+        {/* Quick actions */}
+        <Text style={styles.sectionLabel}>Quick actions</Text>
+        <View style={styles.quickGrid}>
+          {quickActions.map((action) => (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.quickTile}
+              onPress={action.onPress}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: action.bg }]}>
+                <Icon name={action.icon} size={22} color={action.color} />
+              </View>
+              <Text style={styles.quickLabel} numberOfLines={2}>
+                {action.label}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* Settings Section */}
-        <View className="px-5 py-6">
-          <Text className="text-gray-900 font-bold text-base mb-4">Settings</Text>
-          <View className="bg-white rounded-xl overflow-hidden">
-            {SETTINGS_ITEMS.map((item) => (
-              <SettingItem key={item.id} item={item} onPress={() => {}} />
-            ))}
-          </View>
+        {/* Account */}
+        {accountFields.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>Account</Text>
+            <View style={styles.card}>
+              {accountFields.map((field, index) => (
+                <View
+                  key={field.label}
+                  style={[styles.detailRow, index < accountFields.length - 1 && styles.detailBorder]}
+                >
+                  <Text style={styles.detailLabel}>{field.label}</Text>
+                  <Text style={styles.detailValue} numberOfLines={1}>
+                    {field.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Settings */}
+        <Text style={styles.sectionLabel}>Settings</Text>
+        <View style={styles.card}>
+          {settingsRows.map((row, index) => (
+            <TouchableOpacity
+              key={row.id}
+              style={[styles.settingsRow, index < settingsRows.length - 1 && styles.detailBorder]}
+              onPress={row.onPress}
+              activeOpacity={row.onPress ? 0.7 : 1}
+              disabled={!row.onPress}
+            >
+              <View style={styles.settingsIcon}>
+                <Icon name={row.icon} size={20} color={THEME.textMuted} />
+              </View>
+              <Text style={styles.settingsTitle}>{row.title}</Text>
+              <Icon name="chevron-right" size={20} color="#C4C4C4" />
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Logout Button */}
-        <View className="px-5 py-6">
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="bg-red-600 px-6 py-4 rounded-2xl"
-          >
-            <Text className="text-white font-bold text-center text-lg">Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => dispatch(logoutRequest())} activeOpacity={0.85}>
+          <Icon name="logout" size={20} color={THEME.error} />
+          <Text style={styles.logoutText}>Sign out</Text>
+        </TouchableOpacity>
 
-        {/* Version Info */}
-        <View className="px-5 py-4 mb-6">
-          <Text className="text-gray-500 text-center text-xs">App Version 1.0.0</Text>
-        </View>
+        <Text style={styles.version}>LaRiosa · Version 1.0.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: HOME_COLORS.background,
+  },
+  header: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingVertical: 16,
+    backgroundColor: HOME_COLORS.background,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: HOME_COLORS.text,
+  },
+  scroll: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingTop: 4,
+  },
+  heroCard: {
+    backgroundColor: THEME.card,
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    marginBottom: 28,
+    ...CARD_SHADOW,
+  },
+  avatarRing: {
+    padding: 4,
+    borderRadius: 48,
+    backgroundColor: THEME.accentMuted,
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: THEME.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: THEME.textInverse,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: HOME_COLORS.text,
+    letterSpacing: -0.3,
+  },
+  roleBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: THEME.accentMuted,
+  },
+  roleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.accent,
+    textTransform: 'capitalize',
+  },
+  email: {
+    fontSize: 14,
+    color: HOME_COLORS.textMuted,
+    marginTop: 6,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: HOME_COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 28,
+  },
+  quickTile: {
+    width: '48%',
+    backgroundColor: THEME.card,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
+  },
+  quickIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  quickLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: HOME_COLORS.text,
+    lineHeight: 18,
+  },
+  card: {
+    backgroundColor: THEME.card,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  detailBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME.border,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: HOME_COLORS.textMuted,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: HOME_COLORS.text,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 16,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  settingsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  settingsTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: HOME_COLORS.text,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.card,
+    borderRadius: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: THEME.errorMuted,
+    gap: 8,
+    marginBottom: 16,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.error,
+  },
+  version: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: HOME_COLORS.textMuted,
+    marginBottom: 8,
+  },
+});
 
 export default ProfileScreen;

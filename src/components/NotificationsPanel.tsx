@@ -52,7 +52,7 @@ const NotificationsPanel: FC<NotificationsPanelProps> = ({
               notifications.map((n) => (
                 <View key={n.id} style={[styles.item, !n.read && styles.itemUnread]}>
                   <View style={styles.itemIcon}>
-                    <Icon name="bell-ring-outline" size={20} color="#2563EB" />
+                    <Icon name="bell-ring-outline" size={20} color="#76ABAE" />
                   </View>
                   <View style={styles.itemBody}>
                     <Text style={styles.itemTitle}>{n.title}</Text>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  markRead: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  markRead: { fontSize: 14, fontWeight: '600', color: '#76ABAE' },
   list: { paddingHorizontal: 16 },
   empty: { textAlign: 'center', color: '#9CA3AF', paddingVertical: 32 },
   item: {

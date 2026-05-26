@@ -72,7 +72,18 @@ export function extractApiErrorMessage(
 
   if (typeof data.error === 'string') return data.error;
   if (typeof data.message === 'string' && !data.success) return data.message;
-  if (typeof data.detail === 'string') return data.detail;
+  if (typeof data.detail === 'string') {
+    if (data.status === 404) {
+      return 'API not found. Check api.ts host (no trailing slash) and that the server exposes this route.';
+    }
+    if (data.status === 500) {
+      return (
+        'Server error (500). Postman may be using localhost while the app uses Railway. ' +
+        'Redeploy the backend with JWT env vars, or set ENVIRONMENT in api.ts to ANDROID_EMULATOR for local Symfony.'
+      );
+    }
+    return data.detail;
+  }
   if (typeof data['hydra:description'] === 'string') return data['hydra:description'];
 
   const violations = data.violations as Array<{ message?: string }> | undefined;

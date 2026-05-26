@@ -23,6 +23,7 @@ import {
   type BookingStatus,
 } from '../app/api/bookings';
 import { HOME_SERVICE_TILES, HOME_COLORS, type HomeServiceTile } from '../constants/homeDesign';
+import { CARD_SHADOW, THEME, getBookingStatusStyle } from '../constants/theme';
 import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
 import HomeSideMenu from '../components/HomeSideMenu';
 import NotificationsPanel, { type AppNotification } from '../components/NotificationsPanel';
@@ -34,11 +35,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TILE_GAP = 12;
 const TILE_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - TILE_GAP) / 2;
 
-const STATUS_TAG: Record<BookingStatus, { label: string; bg: string; text: string }> = {
-  pending: { label: 'Pending', bg: '#FEF3C7', text: '#D97706' },
-  approved: { label: 'Approved', bg: '#DBEAFE', text: '#2563EB' },
-  rejected: { label: 'Rejected', bg: '#FEE2E2', text: '#DC2626' },
-  completed: { label: 'Completed', bg: '#D1FAE5', text: '#059669' },
+const STATUS_LABEL: Record<BookingStatus, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  completed: 'Completed',
 };
 
 function countByStatus(bookings: TestDriveBooking[]) {
@@ -49,10 +50,10 @@ function countByStatus(bookings: TestDriveBooking[]) {
 
 function buildNotifications(bookings: TestDriveBooking[]): AppNotification[] {
   const items: AppNotification[] = bookings.slice(0, 5).map((b) => {
-    const tag = STATUS_TAG[b.status];
+    const tag = getBookingStatusStyle(b.status);
     return {
       id: `booking-${b.id}`,
-      title: `${tag.label}: ${getBookingTitle(b)}`,
+      title: `${STATUS_LABEL[b.status]}: ${getBookingTitle(b)}`,
       body: `Scheduled for ${formatBookingDateTime(b.requestedDateTime).date}`,
       time: b.updatedAt ?? b.createdAt ?? 'Recently',
       read: b.status !== 'pending',
@@ -61,7 +62,7 @@ function buildNotifications(bookings: TestDriveBooking[]): AppNotification[] {
   if (items.length < 3) {
     items.push({
       id: 'welcome',
-      title: 'Welcome to LaRiosa',
+      title: 'Welcome to Ramle Wheels',
       body: 'Browse inventory or schedule a test drive from the home screen.',
       time: 'Today',
       read: false,
@@ -82,7 +83,7 @@ const HomeScreen: FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadBookings = useCallback(() => {
-    if (isAuthenticated) dispatch(getBookingsRequest());
+    if (isAuthenticated) dispatch(getBookingsRequest({ silent: true }));
   }, [dispatch, isAuthenticated]);
 
   useFocusEffect(
@@ -104,7 +105,7 @@ const HomeScreen: FC = () => {
 
   const handleServicePress = (tile: HomeServiceTile): void => {
     if (tile.action.type === 'route') {
-      navigation.navigate(tile.action.route);
+      navigation.navigate(tile.action.route, tile.action.params);
     } else {
       navigation.navigate(tile.action.tab);
     }
@@ -183,28 +184,36 @@ const HomeScreen: FC = () => {
                 <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.activityScroll}
+              contentContainerStyle={styles.activityScrollContent}
+            >
               {recentBookings.map((item) => {
-                const tag = STATUS_TAG[item.status];
+                const tag = getBookingStatusStyle(item.status);
                 return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.activityCard}
-                    onPress={() => navigation.navigate(ROUTES.BOOKING_DETAIL, { bookingId: item.id })}
-                    activeOpacity={0.9}
-                  >
-                    <View style={[styles.activityTag, { backgroundColor: '#E0F2FE' }]}>
-                      <Text style={[styles.activityTagText, { color: '#0284C7' }]}>Test drive</Text>
-                    </View>
-                    <Text style={styles.activityTitle} numberOfLines={2}>
-                      {getBookingTitle(item)}
-                    </Text>
-                    <Text style={styles.activityDate}>{formatActivityDate(item.requestedDateTime)}</Text>
-                    <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
-                      <Icon name="clock-outline" size={14} color={tag.text} />
-                      <Text style={[styles.statusPillText, { color: tag.text }]}>{tag.label}</Text>
-                    </View>
-                  </TouchableOpacity>
+                  <View key={item.id} style={styles.activityCardWrap}>
+                    <TouchableOpacity
+                      style={styles.activityCard}
+                      onPress={() => navigation.navigate(ROUTES.BOOKING_DETAIL, { bookingId: item.id })}
+                      activeOpacity={0.9}
+                    >
+                      <View style={[styles.activityTag, { backgroundColor: tag.bg }]}>
+                        <Text style={[styles.activityTagText, { color: tag.text }]}>Test drive</Text>
+                      </View>
+                      <Text style={styles.activityTitle} numberOfLines={2}>
+                        {getBookingTitle(item)}
+                      </Text>
+                      <Text style={styles.activityDate}>{formatActivityDate(item.requestedDateTime)}</Text>
+                      <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
+                        <Icon name="clock-outline" size={14} color={tag.text} />
+                        <Text style={[styles.statusPillText, { color: tag.text }]}>
+                          {STATUS_LABEL[item.status]}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
                 );
               })}
             </ScrollView>
@@ -261,7 +270,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: SCREEN_PADDING,
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 4,
   },
   iconBtn: {
@@ -271,11 +280,9 @@ const styles = StyleSheet.create({
     backgroundColor: HOME_COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
   },
   badge: {
     position: 'absolute',
@@ -320,20 +327,18 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
   },
   statNumber: {
     fontSize: 36,
     fontWeight: '800',
-    color: HOME_COLORS.text,
+    color: HOME_COLORS.textOnCard,
   },
   statLabel: {
     fontSize: 14,
-    color: HOME_COLORS.textMuted,
+    color: HOME_COLORS.textMutedOnCard,
     marginTop: 4,
     fontWeight: '600',
   },
@@ -368,18 +373,27 @@ const styles = StyleSheet.create({
   },
   activityScroll: {
     paddingLeft: SCREEN_PADDING,
+    overflow: 'visible',
+  },
+  activityScrollContent: {
+    paddingTop: 6,
+    paddingBottom: 8,
+    paddingRight: SCREEN_PADDING,
+  },
+  activityCardWrap: {
+    marginRight: 12,
+    paddingBottom: 10,
   },
   activityCard: {
     width: 200,
     backgroundColor: HOME_COLORS.card,
     borderRadius: 20,
-    padding: 16,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    ...CARD_SHADOW,
   },
   activityTag: {
     alignSelf: 'flex-start',
@@ -392,15 +406,15 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: HOME_COLORS.text,
+    color: HOME_COLORS.textOnCard,
     lineHeight: 20,
     minHeight: 40,
   },
   activityDate: {
     fontSize: 12,
-    color: HOME_COLORS.textMuted,
+    color: HOME_COLORS.textMutedOnCard,
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   statusPill: {
     flexDirection: 'row',

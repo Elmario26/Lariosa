@@ -1,5 +1,6 @@
 // Cars API calls
 import { apiRequest } from './client';
+import { buildQueryParams } from './queryParams';
 
 interface Vehicle {
   id: string;
@@ -24,27 +25,51 @@ interface VehicleListResponse {
   'hydra:member'?: Vehicle[];
   total?: number;
   'hydra:totalItems'?: number;
+  count?: number;
+}
+
+/** Railway / API Platform may return a bare JSON array or { data: [...] }. */
+export function normalizeVehicleListResponse(
+  response: Vehicle[] | VehicleListResponse
+): { data: Vehicle[]; total: number } {
+  if (Array.isArray(response)) {
+    return { data: response, total: response.length };
+  }
+
+  const data =
+    response.data ??
+    response['hydra:member'] ??
+    [];
+
+  const total =
+    response.total ??
+    response['hydra:totalItems'] ??
+    response.count ??
+    data.length;
+
+  return { data: Array.isArray(data) ? data : [], total };
 }
 
 /**
  * Get all cars
  * @param {object} params - Query params (page, limit, search, filter, featured, etc)
- * @param {string} token - Authentication token (optional)
+ * @param {string} token - Authentication token (optional; list is public on server)
  * @returns {Promise} Cars list
  */
 export const getVehiclesAPI = async (
   params: Record<string, any> = {},
-  token: string | null = null
-): Promise<VehicleListResponse> => {
-  const queryString = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v != null) as [string, string][]
-  ).toString();
+  _token: string | null = null
+): Promise<{ data: Vehicle[]; total: number }> => {
+  const queryString = buildQueryParams(params);
   const endpoint = `/cars${queryString ? `?${queryString}` : ''}`;
 
-  return apiRequest(endpoint, {
+  const raw = await apiRequest<Vehicle[] | VehicleListResponse>(endpoint, {
     method: 'GET',
-    token,
+    // Public endpoint — omit JWT so a stale/invalid token cannot break the list call
+    token: null,
   });
+
+  return normalizeVehicleListResponse(raw);
 };
 
 /**
@@ -69,9 +94,12 @@ export const getVehicleByIdAPI = async (
  * @returns {Promise} Featured cars list
  */
 /** Backend has no featured filter — returns same collection as /cars */
-export const getFeaturedVehiclesAPI = async (token: string | null = null): Promise<VehicleListResponse> => {
-  return apiRequest('/cars', {
+export const getFeaturedVehiclesAPI = async (
+  _token: string | null = null
+): Promise<{ data: Vehicle[]; total: number }> => {
+  const raw = await apiRequest<Vehicle[] | VehicleListResponse>('/cars', {
     method: 'GET',
-    token,
+    token: null,
   });
+  return normalizeVehicleListResponse(raw);
 };

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AUTH_COLORS, AUTH_SPACING } from '../../constants/authDesign';
+import { APP_LOGO } from '../../constants/assets';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -45,7 +46,7 @@ const AuthScreenLayout: FC<AuthScreenLayoutProps> = ({
           </TouchableOpacity>
         )}
         {showLogo && (
-          <Image source={require('../../../assets/LOGO2.png')} style={styles.logo} resizeMode="contain" />
+          <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
         )}
         <Text style={styles.heroTitle}>{title}</Text>
         <Text style={styles.heroSubtitle}>{subtitle}</Text>
@@ -95,8 +96,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logo: {
-    width: 88,
-    height: 88,
+    width: 220,
+    height: 72,
     alignSelf: 'center',
     marginBottom: 12,
   },
