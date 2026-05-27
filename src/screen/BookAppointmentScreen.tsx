@@ -127,7 +127,7 @@ const BookAppointmentScreen: FC<BookAppointmentScreenProps> = () => {
 
     setIsSubmitting(true);
     try {
-      await submitServiceBookingRequest(
+      const { savedLocally } = await submitServiceBookingRequest(
         {
           serviceId: service.id,
           serviceName: service.name,
@@ -139,12 +139,11 @@ const BookAppointmentScreen: FC<BookAppointmentScreenProps> = () => {
         token
       );
 
-      dialog.alert(
-        'Request submitted',
-        `Your ${service.name.toLowerCase()} appointment is saved. Our team will confirm by phone shortly.`,
-        () => navigation.goBack(),
-        'success'
-      );
+      const successMessage = savedLocally
+        ? `Your ${service.name.toLowerCase()} request is saved in the app. View it under Appointments → Service. Our team will confirm by phone once online booking is connected.`
+        : `Your ${service.name.toLowerCase()} appointment was sent to the dealership. We will confirm by phone shortly.`;
+
+      dialog.alert('Request submitted', successMessage, () => navigation.goBack(), 'success');
     } catch (err: unknown) {
       const message =
         (err as { message?: string })?.message ?? 'Could not save your request. Please try again.';

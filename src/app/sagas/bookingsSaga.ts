@@ -24,6 +24,8 @@ import {
   createTestDriveBookingAPI,
   updateTestDriveBookingAPI,
   deleteTestDriveBookingAPI,
+  canModifyBooking,
+  type TestDriveBooking,
 } from '../api/bookings';
 import { RootState } from '../store';
 
@@ -81,6 +83,12 @@ function* createBookingAsync(action: AnyAction): SagaIterator {
   }
 }
 
+function* findTestDriveBooking(bookingId: number): SagaIterator {
+  const { bookings, currentBooking } = yield select((state: RootState) => state.bookings);
+  if (currentBooking?.id === bookingId) return currentBooking;
+  return bookings.find((b: TestDriveBooking) => b.id === bookingId) ?? null;
+}
+
 function* updateBookingAsync(action: AnyAction): SagaIterator {
   try {
     const { token } = yield select((state: RootState) => state.auth);
@@ -88,6 +96,10 @@ function* updateBookingAsync(action: AnyAction): SagaIterator {
       throw { message: 'Please log in' };
     }
     const { bookingId, ...payload } = action.payload;
+    const existing = yield call(findTestDriveBooking, bookingId);
+    if (existing && !canModifyBooking(existing)) {
+      throw { message: 'Only pending bookings can be updated.' };
+    }
     const booking = yield call(updateTestDriveBookingAPI, bookingId, payload, token);
     yield put({
       type: UPDATE_BOOKING_SUCCESS,
@@ -107,7 +119,12 @@ function* deleteBookingAsync(action: AnyAction): SagaIterator {
     if (!token) {
       throw { message: 'Please log in' };
     }
-    yield call(deleteTestDriveBookingAPI, action.payload, token);
+    const bookingId = action.payload as number;
+    const existing = yield call(findTestDriveBooking, bookingId);
+    if (existing && !canModifyBooking(existing)) {
+      throw { message: 'Only pending bookings can be cancelled.' };
+    }
+    yield call(deleteTestDriveBookingAPI, bookingId, token);
     yield put({
       type: DELETE_BOOKING_SUCCESS,
       payload: { id: action.payload, message: 'Booking cancelled.' },

@@ -32,6 +32,7 @@ export interface VehiclesState {
   featuredVehicles: Vehicle[];
   currentVehicle: Vehicle | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   filters: VehicleFilters;
   pagination: VehiclePagination;
@@ -49,6 +50,7 @@ const initialState: VehiclesState = {
   featuredVehicles: [],
   currentVehicle: null,
   isLoading: false,
+  isRefreshing: false,
   error: null,
   filters: {
     search: '',
@@ -65,24 +67,36 @@ const initialState: VehiclesState = {
 
 const vehiclesReducer = (state: VehiclesState = initialState, action: VehiclesAction): VehiclesState => {
   switch (action.type) {
-    case GET_VEHICLES_REQUEST:
+    case GET_VEHICLES_REQUEST: {
+      const refresh = Boolean(action.payload?.refresh);
+      const hasData = state.vehicles.length > 0;
+      if (refresh) {
+        return { ...state, isRefreshing: true, error: null };
+      }
       return {
         ...state,
-        isLoading: true,
+        isLoading: !hasData,
+        isRefreshing: false,
         error: null,
       };
+    }
     case GET_VEHICLES_SUCCESS: {
       const vehiclesData = Array.isArray(action.payload)
         ? action.payload
-        : action.payload.data || action.payload['hydra:member'] || action.payload || [];
+        : action.payload.data ||
+          action.payload.member ||
+          action.payload['hydra:member'] ||
+          [];
       return {
         ...state,
         isLoading: false,
+        isRefreshing: false,
         vehicles: Array.isArray(vehiclesData) ? vehiclesData : [],
         pagination: {
           ...state.pagination,
           total:
             action.payload.total ||
+            action.payload.totalItems ||
             action.payload['hydra:totalItems'] ||
             (Array.isArray(vehiclesData) ? vehiclesData.length : 0),
         },
@@ -93,6 +107,7 @@ const vehiclesReducer = (state: VehiclesState = initialState, action: VehiclesAc
       return {
         ...state,
         isLoading: false,
+        isRefreshing: false,
         error: action.payload,
       };
 
@@ -125,7 +140,10 @@ const vehiclesReducer = (state: VehiclesState = initialState, action: VehiclesAc
     case GET_FEATURED_VEHICLES_SUCCESS: {
       const featuredData = Array.isArray(action.payload)
         ? action.payload
-        : action.payload.data || action.payload['hydra:member'] || action.payload || [];
+        : action.payload.data ||
+          action.payload.member ||
+          action.payload['hydra:member'] ||
+          [];
       return {
         ...state,
         isLoading: false,

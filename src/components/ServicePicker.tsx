@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   FlatList,
   TextInput,
   StyleSheet,
-  Pressable,
+  Dimensions,
 } from 'react-native';
+import AnimatedModalShell from './animated/AnimatedModalShell';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   PMS_SERVICES,
@@ -19,6 +19,11 @@ import {
 import { THEME } from '../constants/theme';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const WINDOW_HEIGHT = Dimensions.get('window').height;
+const SHEET_MAX_HEIGHT = Math.round(WINDOW_HEIGHT * 0.78);
+/** Space for handle, titles, search, and safe area */
+const LIST_HEIGHT = Math.max(220, SHEET_MAX_HEIGHT - 168);
 
 interface ServicePickerProps {
   value: string;
@@ -82,6 +87,13 @@ const ServicePicker: FC<ServicePickerProps> = ({
     setQuery('');
   };
 
+  const closeSheet = (): void => {
+    setOpen(false);
+    setQuery('');
+  };
+
+  const sheetPaddingBottom = Math.max(insets.bottom, 16);
+
   return (
     <>
       <TouchableOpacity
@@ -107,83 +119,93 @@ const ServicePicker: FC<ServicePickerProps> = ({
         <Icon name="chevron-down" size={22} color="#9CA3AF" />
       </TouchableOpacity>
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Choose a service</Text>
-          <Text style={styles.sheetSub}>Oil change, tires, PMS packages & more</Text>
+      <AnimatedModalShell
+        visible={open}
+        onClose={closeSheet}
+        placement="bottom"
+        animation="slide-up"
+        slideDistance={SHEET_MAX_HEIGHT}
+        backdropOpacity={0.4}
+        panelStyle={{
+          ...styles.sheet,
+          maxHeight: SHEET_MAX_HEIGHT,
+          paddingBottom: sheetPaddingBottom,
+        }}
+      >
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetTitle}>Choose a service</Text>
+        <Text style={styles.sheetSub}>Oil change, tires, PMS packages & more</Text>
 
-          <View style={styles.searchRow}>
-            <Icon name="magnify" size={20} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search services…"
-              placeholderTextColor="#9CA3AF"
-              value={query}
-              onChangeText={setQuery}
-              autoCorrect={false}
-            />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
-                <Icon name="close-circle" size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <FlatList
-            data={flatData}
-            keyExtractor={(row) => row.key}
-            style={styles.list}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item: row }) => {
-              if (row.type === 'header') {
-                return (
-                  <View style={styles.sectionHeader}>
-                    <Icon name={row.icon} size={16} color="#6B7280" />
-                    <Text style={styles.sectionTitle}>{row.label}</Text>
-                  </View>
-                );
-              }
-              const { service } = row;
-              const isSelected = service.id === value;
-              return (
-                <TouchableOpacity
-                  style={[styles.option, isSelected && styles.optionSelected]}
-                  onPress={() => pick(service.id)}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.optionIcon, isSelected && styles.optionIconSelected]}>
-                    <Icon
-                      name={service.icon}
-                      size={20}
-                      color={isSelected ? '#fff' : THEME.primary}
-                    />
-                  </View>
-                  <View style={styles.optionBody}>
-                    <Text style={[styles.optionName, isSelected && styles.optionNameSelected]}>
-                      {service.name}
-                    </Text>
-                    <Text style={styles.optionDesc} numberOfLines={2}>
-                      {service.description}
-                      {service.estimatedMinutes ? ` · ~${service.estimatedMinutes} min` : ''}
-                    </Text>
-                  </View>
-                  {isSelected ? (
-                    <Icon name="check-circle" size={22} color={THEME.primary} />
-                  ) : (
-                    <Icon name="chevron-right" size={20} color="#D1D5DB" />
-                  )}
-                </TouchableOpacity>
-              );
-            }}
-            ListEmptyComponent={
-              <Text style={styles.empty}>No services match your search.</Text>
-            }
+        <View style={styles.searchRow}>
+          <Icon name="magnify" size={20} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search services…"
+            placeholderTextColor="#9CA3AF"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
           />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
+              <Icon name="close-circle" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
         </View>
-      </Modal>
+
+        <FlatList
+          data={flatData}
+          keyExtractor={(row) => row.key}
+          style={[styles.list, { height: LIST_HEIGHT }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          renderItem={({ item: row }) => {
+            if (row.type === 'header') {
+              return (
+                <View style={styles.sectionHeader}>
+                  <Icon name={row.icon} size={16} color="#6B7280" />
+                  <Text style={styles.sectionTitle}>{row.label}</Text>
+                </View>
+              );
+            }
+            const { service } = row;
+            const isSelected = service.id === value;
+            return (
+              <TouchableOpacity
+                style={[styles.option, isSelected && styles.optionSelected]}
+                onPress={() => pick(service.id)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.optionIcon, isSelected && styles.optionIconSelected]}>
+                  <Icon
+                    name={service.icon}
+                    size={20}
+                    color={isSelected ? '#fff' : THEME.primary}
+                  />
+                </View>
+                <View style={styles.optionBody}>
+                  <Text style={[styles.optionName, isSelected && styles.optionNameSelected]}>
+                    {service.name}
+                  </Text>
+                  <Text style={styles.optionDesc} numberOfLines={2}>
+                    {service.description}
+                    {service.estimatedMinutes ? ` · ~${service.estimatedMinutes} min` : ''}
+                  </Text>
+                </View>
+                {isSelected ? (
+                  <Icon name="check-circle" size={22} color={THEME.primary} />
+                ) : (
+                  <Icon name="chevron-right" size={20} color="#D1D5DB" />
+                )}
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <Text style={styles.empty}>No services match your search.</Text>
+          }
+        />
+      </AnimatedModalShell>
     </>
   );
 };
@@ -217,15 +239,11 @@ const styles = StyleSheet.create({
   triggerLabel: { fontSize: 12, color: '#6B7280', fontWeight: '600', marginBottom: 2 },
   triggerValue: { fontSize: 16, color: '#111827', fontWeight: '700' },
   triggerHint: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-  },
   sheet: {
+    width: '100%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '78%',
     paddingHorizontal: 20,
     paddingTop: 12,
   },
@@ -255,7 +273,9 @@ const styles = StyleSheet.create({
     color: '#111827',
     paddingVertical: 0,
   },
-  list: { flexGrow: 0 },
+  list: {
+    width: '100%',
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

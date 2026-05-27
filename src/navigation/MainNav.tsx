@@ -18,6 +18,8 @@ import TestDriveScreen from '../screen/TestDriveScreen';
 import BookingDetailScreen from '../screen/BookingDetailScreen';
 import EditBookingScreen from '../screen/EditBookingScreen';
 import ServiceHistoryScreen from '../screen/ServiceHistoryScreen';
+import type { BookingDetailRouteParams } from '../utils/appointmentDetail';
+import { stackScreenOptions, tabScreenOptions } from './screenTransitions';
 
 export type MainStackParamList = {
   TabNavigator: undefined;
@@ -27,7 +29,7 @@ export type MainStackParamList = {
     intent?: 'service' | 'financing' | 'trade-in';
   };
   [ROUTES.TEST_DRIVE]: { vehicle?: any };
-  [ROUTES.BOOKING_DETAIL]: { bookingId: number };
+  [ROUTES.BOOKING_DETAIL]: BookingDetailRouteParams;
   [ROUTES.EDIT_BOOKING]: { bookingId: number };
   [ROUTES.SERVICE_HISTORY]: undefined;
 };
@@ -51,11 +53,9 @@ const TabNavigator: FC = () => {
 
   return (
     <Tab.Navigator
+      detachInactiveScreens
       screenOptions={({ route }) => ({
-        headerShown: false,
-        sceneContainerStyle: {
-          backgroundColor: THEME.background,
-        },
+        ...tabScreenOptions,
         tabBarStyle: {
           height: tabHeight,
           paddingBottom: Math.max(insets.bottom, 8),
@@ -118,7 +118,7 @@ const TabNavigator: FC = () => {
 
 const MainNavigation: FC = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="TabNavigator" component={TabNavigator} />
       <Stack.Screen name={ROUTES.VEHICLE_DETAIL} component={VehicleDetailScreen} />
       <Stack.Screen name={ROUTES.BOOK_APPOINTMENT} component={BookAppointmentScreen} />

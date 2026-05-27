@@ -1,25 +1,25 @@
-import React, { useEffect, useState, FC } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useMemo, useRef, useState, FC } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import {
-  Image,
   Text,
   TouchableOpacity,
   View,
   TextInput,
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { ROUTES } from '../utils';
 import { getVehiclesRequest } from '../app/actions';
-import { getCarImageUrl } from '../app/config/api';
 import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
 import { THEME, CARD_SHADOW } from '../constants/theme';
 import { HOME_COLORS } from '../constants/homeDesign';
-import { getStatusStyle } from '../utils/vehicle';
+import CarImage from '../components/CarImage';
+import { getStatusStyle, getVehicleImageUris } from '../utils/vehicle';
 import FilterChipRow, { type FilterChipOption } from '../components/FilterChipRow';
 import { RootState } from '../app/store';
 // @ts-ignore
@@ -33,9 +33,6 @@ const FILTER_OPTIONS: FilterChipOption[] = [
   { key: 'Hybrid', label: 'Hybrid' },
   { key: 'Electric', label: 'Electric' },
 ];
-
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400';
 
 interface Vehicle {
   id?: string;
@@ -52,20 +49,13 @@ interface Vehicle {
   [key: string]: any;
 }
 
-const getVehicleImage = (vehicle: Vehicle): string => {
-  if (vehicle.images?.length) {
-    return getCarImageUrl(vehicle.images[0]);
-  }
-  return FALLBACK_IMAGE;
-};
-
 const VehicleListItem: FC<{ vehicle: Vehicle; onPress: () => void }> = ({ vehicle, onPress }) => {
   const statusStyle = getStatusStyle(vehicle.status);
   const year = vehicle.Year ?? vehicle.year;
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.vehicleCard} activeOpacity={0.9}>
-      <Image source={{ uri: getVehicleImage(vehicle) }} style={styles.vehicleImage} resizeMode="cover" />
+      <CarImage uris={getVehicleImageUris(vehicle)} style={styles.vehicleImage} resizeMode="cover" />
       <View style={styles.vehicleBody}>
         <View style={styles.vehicleTitleRow}>
           <View style={styles.vehicleTitleBlock}>
@@ -130,30 +120,96 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { vehicles, isLoading, error } = useSelector((state: RootState) => state.vehicles);
+  const { vehicles, isLoading, isRefreshing, error } = useSelector(
+    (state: RootState) => state.vehicles
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const isFirstFocus = useRef(true);
 
   const listBottomPad = 72 + TAB_BAR_BOTTOM_GAP + insets.bottom;
   const vehicleList = Array.isArray(vehicles) ? vehicles : [];
+  const filteredVehicleList = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const type = activeFilter.toLowerCase();
+
+    return vehicleList.filter((item) => {
+      const itemType = String(item.type ?? '').toLowerCase();
+      const matchesType = activeFilter === 'All' || itemType === type;
+
+      if (!matchesType) return false;
+      if (!query) return true;
+
+      const brand = String(item.brand ?? '').toLowerCase();
+      const make = String(item.make ?? item.model ?? '').toLowerCase();
+      const color = String(item.color ?? '').toLowerCase();
+      const conditions = String(item.conditions ?? '').toLowerCase();
+
+      return (
+        brand.includes(query) ||
+        make.includes(query) ||
+        color.includes(query) ||
+        conditions.includes(query)
+      );
+    });
+  }, [vehicleList, searchQuery, activeFilter]);
+
+  const fetchVehicles = useCallback(
+    (opts: { refresh?: boolean } = {}) => {
+      dispatch(
+        getVehiclesRequest({
+          search: searchQuery,
+          type: activeFilter,
+          refresh: opts.refresh,
+        })
+      );
+    },
+    [dispatch, searchQuery, activeFilter]
+  );
 
   useEffect(() => {
-    dispatch(
-      getVehiclesRequest({
-        search: searchQuery,
-        type: activeFilter,
-      })
-    );
-  }, [dispatch, searchQuery, activeFilter]);
+    fetchVehicles();
+  }, [fetchVehicles]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      fetchVehicles({ refresh: true });
+    }, [fetchVehicles])
+  );
+
+  const onPullRefresh = useCallback(() => {
+    fetchVehicles({ refresh: true });
+  }, [fetchVehicles]);
 
   const ListHeader = (
     <View style={styles.headerBlock}>
-      <Text style={styles.title}>Inventory</Text>
-      <Text style={styles.subtitle}>
-        {isLoading && vehicleList.length === 0
-          ? 'Loading vehicles…'
-          : `${vehicleList.length} vehicle${vehicleList.length === 1 ? '' : 's'} available`}
-      </Text>
+      <View style={styles.titleRow}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>Inventory</Text>
+          <Text style={styles.subtitle}>
+            {isLoading && vehicleList.length === 0
+              ? 'Loading vehicles…'
+              : `${filteredVehicleList.length} vehicle${filteredVehicleList.length === 1 ? '' : 's'} available`}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={onPullRefresh}
+          disabled={isLoading || isRefreshing}
+          style={styles.refreshBtn}
+          accessibilityLabel="Refresh inventory"
+          hitSlop={8}
+        >
+          <Icon
+            name="refresh"
+            size={22}
+            color={isLoading || isRefreshing ? HOME_COLORS.textMuted : THEME.accent}
+          />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.searchBox}>
         <Icon name="magnify" size={22} color={THEME.accent} />
@@ -177,7 +233,7 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
   );
 
   const ListEmpty = () => {
-    if (isLoading) {
+    if (isLoading && vehicleList.length === 0) {
       return <ActivityIndicator size="large" color={THEME.accent} style={styles.loader} />;
     }
     if (error) {
@@ -188,12 +244,7 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
           </View>
           <Text style={styles.emptyTitle}>Could not load inventory</Text>
           <Text style={styles.emptySub}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryBtn}
-            onPress={() =>
-              dispatch(getVehiclesRequest({ search: searchQuery, type: activeFilter }))
-            }
-          >
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchVehicles()}>
             <Text style={styles.retryBtnText}>Try again</Text>
           </TouchableOpacity>
         </View>
@@ -213,7 +264,7 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <FlatList
-        data={vehicleList}
+        data={filteredVehicleList}
         keyExtractor={(item, index) => String(item.id ?? index)}
         renderItem={({ item }) => (
           <VehicleListItem
@@ -225,6 +276,14 @@ const InventoryScreen: FC<InventoryScreenProps> = () => {
         ListEmptyComponent={ListEmpty}
         contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPad }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onPullRefresh}
+            tintColor={THEME.accent}
+            colors={[THEME.accent]}
+          />
+        }
       />
     </View>
   );
@@ -243,6 +302,26 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  titleBlock: {
+    flex: 1,
+    marginRight: 8,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.card,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+  },
   title: {
     fontSize: 26,
     fontWeight: '800',
@@ -253,7 +332,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: HOME_COLORS.textMuted,
     marginTop: 4,
-    marginBottom: 18,
+    marginBottom: 14,
     fontWeight: '500',
   },
   searchBox: {

@@ -1,12 +1,25 @@
-import { NavigationContainer } from '@react-navigation/native';
-import { useEffect, FC } from 'react';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { useEffect, FC, useMemo } from 'react';
 import { Platform, StatusBar, useColorScheme } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getUserRequest } from '../app/actions';
 import { RootState } from '../app/store';
+import { THEME } from '../constants/theme';
 
 import AuthNav from './AuthNav';
 import MainNav from './MainNav';
+
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: THEME.background,
+    card: THEME.card,
+    border: THEME.cardBorder,
+    text: THEME.text,
+    primary: THEME.primary,
+  },
+};
 
 const RootNavigation: FC = () => {
   const dispatch = useDispatch();
@@ -26,8 +39,10 @@ const RootNavigation: FC = () => {
     }
   }, [isAuthenticated, token, dispatch]);
 
+  const navigationTheme = useMemo(() => navTheme, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       {isAuthenticated ? <MainNav /> : <AuthNav />}
     </NavigationContainer>
   );

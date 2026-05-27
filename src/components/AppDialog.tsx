@@ -1,16 +1,9 @@
 import React, { FC } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-  StyleSheet,
-  Dimensions,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { THEME } from '../constants/theme';
+import AnimatedModalShell from './animated/AnimatedModalShell';
 
 export type AppDialogVariant = 'info' | 'success' | 'warning' | 'danger';
 
@@ -47,6 +40,8 @@ const VARIANT_META: Record<
   danger: { icon: 'trash-can-outline', iconColor: THEME.error, iconBg: THEME.errorMuted },
 };
 
+const CARD_WIDTH = Math.min(Dimensions.get('window').width - 48, 360);
+
 const AppDialog: FC<AppDialogProps> = ({ visible, config, onClose }) => {
   if (!config) return null;
 
@@ -67,81 +62,79 @@ const AppDialog: FC<AppDialogProps> = ({ visible, config, onClose }) => {
   const dismissOnBackdrop = config.dismissOnBackdrop ?? !hasDestructive;
 
   return (
-    <Modal
+    <AnimatedModalShell
       visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={dismissOnBackdrop ? onClose : undefined}
+      onClose={onClose}
+      dismissOnBackdrop={dismissOnBackdrop}
+      placement="center"
+      animation="scale"
+      backdropOpacity={0.55}
+      panelStyle={styles.card}
     >
-      <Pressable style={styles.overlay} onPress={dismissOnBackdrop ? onClose : undefined}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <View style={[styles.iconWrap, { backgroundColor: meta.iconBg }]}>
-            <Icon name={meta.icon} size={32} color={meta.iconColor} />
-          </View>
+      <View style={styles.cardContent}>
+        <View style={[styles.iconWrap, { backgroundColor: meta.iconBg }]}>
+          <Icon name={meta.icon} size={32} color={meta.iconColor} />
+        </View>
 
-          <Text style={styles.title}>{config.title}</Text>
-          {config.message ? <Text style={styles.message}>{config.message}</Text> : null}
+        <Text style={styles.title}>{config.title}</Text>
+        {config.message ? <Text style={styles.message}>{config.message}</Text> : null}
 
-          <View style={[styles.actions, isRow && styles.actionsRow]}>
-            {buttons.map((btn, index) => {
-              const style = btn.style ?? (index === 0 && buttons.length > 1 ? 'cancel' : 'primary');
-              return (
-                <TouchableOpacity
-                  key={`${btn.text}-${index}`}
+        <View style={[styles.actions, isRow && styles.actionsRow]}>
+          {buttons.map((btn, index) => {
+            const style = btn.style ?? (index === 0 && buttons.length > 1 ? 'cancel' : 'primary');
+            return (
+              <TouchableOpacity
+                key={`${btn.text}-${index}`}
+                style={[
+                  styles.btn,
+                  !isRow && styles.btnFull,
+                  isRow && styles.btnHalf,
+                  style === 'primary' && styles.btnPrimary,
+                  style === 'destructive' && styles.btnDestructive,
+                  style === 'cancel' && styles.btnCancel,
+                  style === 'default' && styles.btnCancel,
+                ]}
+                onPress={() => runButton(btn)}
+                activeOpacity={0.85}
+              >
+                <Text
                   style={[
-                    styles.btn,
-                    isRow && styles.btnHalf,
-                    style === 'primary' && styles.btnPrimary,
-                    style === 'destructive' && styles.btnDestructive,
-                    style === 'cancel' && styles.btnCancel,
-                    style === 'default' && styles.btnCancel,
+                    styles.btnText,
+                    style === 'primary' && styles.btnTextPrimary,
+                    style === 'destructive' && styles.btnTextPrimary,
+                    (style === 'cancel' || style === 'default') && styles.btnTextCancel,
                   ]}
-                  onPress={() => runButton(btn)}
-                  activeOpacity={0.85}
                 >
-                  <Text
-                    style={[
-                      styles.btnText,
-                      style === 'primary' && styles.btnTextPrimary,
-                      style === 'destructive' && styles.btnTextPrimary,
-                      (style === 'cancel' || style === 'default') && styles.btnTextCancel,
-                    ]}
-                  >
-                    {btn.text}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+                  {btn.text}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </AnimatedModalShell>
   );
 };
 
-const CARD_WIDTH = Math.min(Dimensions.get('window').width - 48, 360);
-
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
   card: {
     width: CARD_WIDTH,
+    maxWidth: '100%',
     backgroundColor: '#fff',
     borderRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 16,
+  },
+  cardContent: {
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 20,
   },
   iconWrap: {
     width: 64,
@@ -152,6 +145,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
+    width: '100%',
     fontSize: 20,
     fontWeight: '800',
     color: '#111827',
@@ -159,6 +153,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   message: {
+    width: '100%',
     fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
@@ -181,6 +176,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+  },
+  btnFull: {
+    alignSelf: 'stretch',
+    width: '100%',
   },
   btnHalf: { flex: 1 },
   btnPrimary: { backgroundColor: THEME.primary },

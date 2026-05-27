@@ -66,6 +66,7 @@ const BookingDateTimePicker: FC<BookingDateTimePickerProps> = ({
             mode="date"
             display={Platform.OS === 'ios' ? 'inline' : 'default'}
             minimumDate={getTodayStart()}
+            locale="en-US"
             onChange={onDatePicked}
             themeVariant="light"
           />
@@ -98,7 +99,8 @@ const BookingDateTimePicker: FC<BookingDateTimePickerProps> = ({
             value={time}
             mode="time"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            is24Hour
+            is24Hour={false}
+            locale="en-US"
             onChange={onTimePicked}
             themeVariant="light"
           />
@@ -109,8 +111,6 @@ const BookingDateTimePicker: FC<BookingDateTimePickerProps> = ({
           )}
         </View>
       )}
-
-      <Text style={styles.hint}>Past dates and times are not available.</Text>
     </View>
   );
 };

@@ -39,8 +39,16 @@ export interface Vehicle {
   [key: string]: any;
 }
 
+export interface GetVehiclesOptions {
+  search?: string;
+  type?: string;
+  /** Pull-to-refresh — keep list visible, show refresh indicator */
+  refresh?: boolean;
+  [key: string]: unknown;
+}
+
 // Action Creators
-export const getVehiclesRequest = (params: Record<string, any> = {}) => ({
+export const getVehiclesRequest = (params: GetVehiclesOptions = {}) => ({
   type: GET_VEHICLES_REQUEST,
   payload: params,
 });

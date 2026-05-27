@@ -1,3 +1,60 @@
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+/** e.g. May 26, 2026 */
+export function formatDisplayDate(d: Date): string {
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/** e.g. 2:30 PM */
+export function formatDisplayTime12h(d: Date): string {
+  let hours = d.getHours();
+  const minutes = d.getMinutes();
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  hours %= 12;
+  if (hours === 0) hours = 12;
+  return `${hours}:${String(minutes).padStart(2, '0')} ${meridiem}`;
+}
+
+/** Parse Symfony `YYYY-MM-DD HH:MM:SS` (or date-only) into a local Date */
+export function parseBookingDateTimeString(value: string): Date | null {
+  if (!value?.trim()) return null;
+  const [datePart, timePart] = value.trim().split(/\s+/);
+  const [y, m, d] = (datePart || '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  let hh = 12;
+  let mm = 0;
+  if (timePart) {
+    const parts = timePart.split(':').map(Number);
+    hh = parts[0] ?? 12;
+    mm = parts[1] ?? 0;
+  }
+  const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+/** Display labels for lists and detail screens */
+export function formatBookingDateTime(iso: string): { date: string; time: string } {
+  const dt = parseBookingDateTimeString(iso);
+  if (!dt) return { date: '—', time: '—' };
+  return {
+    date: formatDisplayDate(dt),
+    time: formatDisplayTime12h(dt),
+  };
+}
+
 /** Start of today (local) for date picker minimum */
 export function getTodayStart(): Date {
   const d = new Date();
@@ -21,16 +78,11 @@ export function combineDateAndTime(datePart: Date, timePart: Date): Date {
 }
 
 export function formatDateLabel(d: Date): string {
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatDisplayDate(d);
 }
 
 export function formatTimeLabel(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return formatDisplayTime12h(d);
 }
 
 export function formatDateForApi(d: Date): string {

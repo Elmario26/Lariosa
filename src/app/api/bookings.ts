@@ -4,6 +4,13 @@ import {
   formatDateForApi,
   formatTimeForApi,
 } from '../../utils/bookingDateTime';
+import {
+  canModifyTestDriveBooking,
+  normalizeTestDriveStatus,
+  testDriveLockedReason,
+} from '../../utils/bookingPermissions';
+
+export { canModifyTestDriveBooking as canModifyBooking, normalizeTestDriveStatus, testDriveLockedReason };
 
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 
@@ -75,8 +82,13 @@ export const createTestDriveBookingAPI = async (
   if (!booking) {
     throw { status: 422, message: 'Invalid booking response from server' };
   }
-  return booking;
+  return withNormalizedStatus(booking);
 };
+
+function withNormalizedStatus(booking: TestDriveBooking): TestDriveBooking {
+  const status = normalizeTestDriveStatus(booking.status);
+  return status ? { ...booking, status } : booking;
+}
 
 /** GET /api/test-drive-bookings */
 export const getTestDriveBookingsAPI = async (
@@ -88,7 +100,7 @@ export const getTestDriveBookingsAPI = async (
     method: 'GET',
     token,
   });
-  return res.data ?? [];
+  return (res.data ?? []).map(withNormalizedStatus);
 };
 
 /** GET /api/test-drive-bookings/{id} */
@@ -104,7 +116,7 @@ export const getTestDriveBookingByIdAPI = async (
   if (!booking) {
     throw { status: 404, message: 'Booking not found' };
   }
-  return booking;
+  return withNormalizedStatus(booking);
 };
 
 /** Format date + time for Symfony: YYYY-MM-DD HH:MM:SS */
@@ -135,7 +147,7 @@ export const updateTestDriveBookingAPI = async (
   if (!booking) {
     throw { status: 422, message: 'Invalid booking response from server' };
   }
-  return booking;
+  return withNormalizedStatus(booking);
 };
 
 /** DELETE /api/test-drive-bookings/{id} */
@@ -146,17 +158,7 @@ export const deleteTestDriveBookingAPI = async (id: number, token: string): Prom
   });
 };
 
-/** Only pending bookings can be edited or deleted by the customer */
-export function canModifyBooking(booking: TestDriveBooking): boolean {
-  return booking.status === 'pending';
-}
-
-export function formatBookingDateTime(iso: string): { date: string; time: string } {
-  if (!iso) return { date: '—', time: '—' };
-  const [datePart, timePart] = iso.split(' ');
-  const time = timePart ? timePart.slice(0, 5) : '—';
-  return { date: datePart ?? iso, time };
-}
+export { formatBookingDateTime } from '../../utils/bookingDateTime';
 
 export function getBookingTitle(booking: TestDriveBooking): string {
   const car = booking.car;

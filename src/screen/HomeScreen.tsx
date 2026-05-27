@@ -1,4 +1,4 @@
-import React, { useState, useMemo, FC, useCallback } from 'react';
+import React, { useState, useMemo, FC, useCallback, useEffect } from 'react';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   Text,
@@ -26,7 +26,11 @@ import { HOME_SERVICE_TILES, HOME_COLORS, type HomeServiceTile } from '../consta
 import { CARD_SHADOW, THEME, getBookingStatusStyle } from '../constants/theme';
 import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
 import HomeSideMenu from '../components/HomeSideMenu';
-import NotificationsPanel, { type AppNotification } from '../components/NotificationsPanel';
+import NotificationsPanel from '../components/NotificationsPanel';
+import type { AppNotification } from '../utils/notifications';
+import { loadServiceBookingsForUser, type LocalServiceBooking } from '../app/api/serviceBookings';
+import { buildAppNotifications, applyReadState } from '../utils/notifications';
+import AnimatedPressable from '../components/animated/AnimatedPressable';
 import { RootState } from '../app/store';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -48,54 +52,91 @@ function countByStatus(bookings: TestDriveBooking[]) {
   return { active, completed };
 }
 
-function buildNotifications(bookings: TestDriveBooking[]): AppNotification[] {
-  const items: AppNotification[] = bookings.slice(0, 5).map((b) => {
-    const tag = getBookingStatusStyle(b.status);
-    return {
-      id: `booking-${b.id}`,
-      title: `${STATUS_LABEL[b.status]}: ${getBookingTitle(b)}`,
-      body: `Scheduled for ${formatBookingDateTime(b.requestedDateTime).date}`,
-      time: b.updatedAt ?? b.createdAt ?? 'Recently',
-      read: b.status !== 'pending',
-    };
-  });
-  if (items.length < 3) {
-    items.push({
-      id: 'welcome',
-      title: 'Welcome to Ramle Wheels',
-      body: 'Browse inventory or schedule a test drive from the home screen.',
-      time: 'Today',
-      read: false,
-    });
-  }
-  return items.slice(0, 6);
-}
-
 const HomeScreen: FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { user, isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { user, isAuthenticated, token } = useSelector((s: RootState) => s.auth);
   const { bookings } = useSelector((s: RootState) => s.bookings);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [serviceBookings, setServiceBookings] = useState<LocalServiceBooking[]>([]);
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(() => new Set());
 
   const loadBookings = useCallback(() => {
     if (isAuthenticated) dispatch(getBookingsRequest({ silent: true }));
   }, [dispatch, isAuthenticated]);
 
+  const loadServiceBookings = useCallback(async () => {
+    if (!isAuthenticated) {
+      setServiceBookings([]);
+      return;
+    }
+    const items = await loadServiceBookingsForUser(token);
+    setServiceBookings(items);
+  }, [isAuthenticated, token]);
+
   useFocusEffect(
     useCallback(() => {
       loadBookings();
-    }, [loadBookings])
+      void loadServiceBookings();
+    }, [loadBookings, loadServiceBookings])
   );
+
+  useEffect(() => {
+    if (notifOpen) void loadServiceBookings();
+  }, [notifOpen, loadServiceBookings]);
 
   const stats = useMemo(() => countByStatus(bookings), [bookings]);
   const recentBookings = useMemo(() => bookings.slice(0, 6), [bookings]);
-  const notifications = useMemo(() => buildNotifications(bookings), [bookings]);
+  const notifications = useMemo(
+    () => applyReadState(buildAppNotifications(bookings, serviceBookings), readNotifIds),
+    [bookings, serviceBookings, readNotifIds]
+  );
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markNotificationRead = useCallback((id: string) => {
+    setReadNotifIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleMarkAllRead = useCallback(() => {
+    setReadNotifIds(new Set(notifications.map((n) => n.id)));
+  }, [notifications]);
+
+  const handleNotificationPress = useCallback(
+    (notification: AppNotification) => {
+      markNotificationRead(notification.id);
+      setNotifOpen(false);
+
+      switch (notification.action.type) {
+        case 'test_drive':
+          navigation.navigate(ROUTES.BOOKING_DETAIL, {
+            kind: 'test_drive',
+            bookingId: notification.action.bookingId,
+          });
+          break;
+        case 'service':
+          navigation.navigate(ROUTES.BOOKING_DETAIL, {
+            kind: 'service',
+            serviceBookingId: notification.action.serviceBookingId,
+          });
+          break;
+        case 'appointments':
+          navigation.navigate(ROUTES.MY_APPOINTMENTS);
+          break;
+        default:
+          break;
+      }
+    },
+    [markNotificationRead, navigation]
+  );
 
   const onRefresh = (): void => {
     setRefreshing(true);
@@ -117,8 +158,7 @@ const HomeScreen: FC = () => {
 
   const formatActivityDate = (iso: string): string => {
     const { date, time } = formatBookingDateTime(iso);
-    const [y, m, d] = date.split('-');
-    return `${d}.${m}.${y} at ${time}`;
+    return `${date} at ${time}`;
   };
 
   const scrollBottom = 88 + insets.bottom + TAB_BAR_BOTTOM_GAP;
@@ -194,10 +234,9 @@ const HomeScreen: FC = () => {
                 const tag = getBookingStatusStyle(item.status);
                 return (
                   <View key={item.id} style={styles.activityCardWrap}>
-                    <TouchableOpacity
+                    <AnimatedPressable
                       style={styles.activityCard}
                       onPress={() => navigation.navigate(ROUTES.BOOKING_DETAIL, { bookingId: item.id })}
-                      activeOpacity={0.9}
                     >
                       <View style={[styles.activityTag, { backgroundColor: tag.bg }]}>
                         <Text style={[styles.activityTagText, { color: tag.text }]}>Test drive</Text>
@@ -212,7 +251,7 @@ const HomeScreen: FC = () => {
                           {STATUS_LABEL[item.status]}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   </View>
                 );
               })}
@@ -225,7 +264,7 @@ const HomeScreen: FC = () => {
           <Text style={styles.sectionTitlePadded}>Services</Text>
           <View style={styles.tilesGrid}>
             {HOME_SERVICE_TILES.map((tile, index) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={tile.id}
                 style={[
                   styles.serviceTile,
@@ -233,11 +272,10 @@ const HomeScreen: FC = () => {
                   index === HOME_SERVICE_TILES.length - 1 && styles.serviceTileWide,
                 ]}
                 onPress={() => handleServicePress(tile)}
-                activeOpacity={0.88}
               >
                 <Icon name={tile.icon} size={36} color="#fff" />
                 <Text style={styles.serviceTileText}>{tile.title}</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
         </View>
@@ -255,7 +293,8 @@ const HomeScreen: FC = () => {
         visible={notifOpen}
         onClose={() => setNotifOpen(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifOpen(false)}
+        onNotificationPress={handleNotificationPress}
+        onMarkAllRead={handleMarkAllRead}
       />
     </View>
   );

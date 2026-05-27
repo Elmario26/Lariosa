@@ -1,167 +1,87 @@
-import React, { useEffect, useState, useRef, FC } from 'react';
-
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-
+import React, { useCallback, useEffect, useMemo, useState, useRef, FC } from 'react';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import {
-
   Text,
-
   TouchableOpacity,
-
   View,
-
   ScrollView,
-
-  SafeAreaView,
-
   TextInput,
-
-  Image,
-
-  ActivityIndicator,
-
+  Platform,
+  StatusBar,
+  KeyboardAvoidingView,
+  StyleSheet,
 } from 'react-native';
-
 import { useDispatch, useSelector } from 'react-redux';
-
 import {
-
   createBookingRequest,
-
   clearBookingError,
-
   clearBookingSuccessMessage,
-
 } from '../app/actions/bookings';
-
 import { getVehiclesRequest } from '../app/actions/vehicles';
-
 import { formatDateTimeFromDates } from '../app/api/bookings';
-
-import { getCarImageUrl } from '../app/config/api';
-
 import BookingDateTimePicker from '../components/BookingDateTimePicker';
-
+import VehiclePickerRow, { type VehiclePickerItem } from '../components/VehiclePickerRow';
 import { getDefaultBookingDateTime, validateFutureBooking } from '../utils/bookingDateTime';
-
 import { RootState } from '../app/store';
-
 import { ROUTES } from '../utils';
 import { useAppDialog } from '../context/AppDialogContext';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { THEME } from '../constants/theme';
 // @ts-ignore
-
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-
-
-interface VehicleParam {
-
-  id: string | number;
-
-  brand: string;
-
-  model?: string;
-
-  make?: string;
-
-  year?: number;
-
-  images?: string[];
-
-  image?: string;
-
-}
-
-
-
 interface RouteParams {
-
-  vehicle?: VehicleParam;
-
+  vehicle?: VehiclePickerItem;
 }
-
-
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400';
-
-
-
-const getVehicleImage = (vehicle: VehicleParam): string => {
-
-  if (vehicle.image) return vehicle.image;
-
-  if (vehicle.images?.length) return getCarImageUrl(vehicle.images[0]);
-
-  return FALLBACK_IMAGE;
-
-};
-
-
 
 const TestDriveScreen: FC = () => {
-
   const navigation = useNavigation<any>();
-
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-
   const preselected = route.params?.vehicle;
-
   const dispatch = useDispatch();
   const dialog = useAppDialog();
+  const insets = useSafeAreaInsets();
 
-
-
-  const { vehicles: vehicleList, isLoading: vehiclesLoading } = useSelector(
-
-    (s: RootState) => s.vehicles
-
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setBarStyle('dark-content');
+      if (Platform.OS === 'android') {
+        StatusBar.setTranslucent(false);
+        StatusBar.setBackgroundColor(THEME.background);
+      }
+    }, [])
   );
 
+  const { vehicles: vehicleList, isLoading: vehiclesLoading } = useSelector(
+    (s: RootState) => s.vehicles
+  );
+  const vehicles = useMemo(
+    () => (Array.isArray(vehicleList) ? vehicleList : []) as VehiclePickerItem[],
+    [vehicleList]
+  );
   const { isSubmitting, error, lastCreatedMessage, currentBooking } = useSelector(
     (s: RootState) => s.bookings
   );
   const didNavigateToBooking = useRef(false);
-
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
 
-
-
   const defaults = getDefaultBookingDateTime();
-
   const [selectedId, setSelectedId] = useState<string | null>(
-
     preselected ? String(preselected.id) : null
-
   );
-
   const [bookingDate, setBookingDate] = useState(defaults.date);
-
   const [bookingTime, setBookingTime] = useState(defaults.time);
-
   const [notes, setNotes] = useState('');
 
-
-
   useEffect(() => {
-
     dispatch(getVehiclesRequest({ itemsPerPage: 20 }));
-
   }, [dispatch]);
 
-
-
   useEffect(() => {
-
     if (error) {
-
       dialog.alert('Booking failed', error, () => dispatch(clearBookingError()), 'danger');
-
     }
-
   }, [error, dispatch, dialog]);
-
-
 
   useEffect(() => {
     if (!lastCreatedMessage || !currentBooking?.id || didNavigateToBooking.current) return;
@@ -170,235 +90,172 @@ const TestDriveScreen: FC = () => {
     navigation.replace(ROUTES.BOOKING_DETAIL, { bookingId: currentBooking.id });
   }, [lastCreatedMessage, currentBooking, navigation, dispatch]);
 
-
-
   const handleSubmit = (): void => {
-
     if (!isAuthenticated) {
-
       dialog.alert('Sign in required', 'Please log in to schedule a test drive.', undefined, 'warning');
-
       return;
-
     }
-
     if (!selectedId) {
-
       dialog.alert('Missing information', 'Please select a vehicle.', undefined, 'warning');
-
       return;
-
     }
-
     const validationError = validateFutureBooking(bookingDate, bookingTime);
-
     if (validationError) {
-
       dialog.alert('Invalid schedule', validationError, undefined, 'warning');
-
       return;
-
     }
-
     dispatch(
-
       createBookingRequest({
-
         carId: Number(selectedId),
-
         requestedDateTime: formatDateTimeFromDates(bookingDate, bookingTime),
-
         notes: notes.trim() || undefined,
-
       })
-
     );
-
   };
 
-
-
   return (
-
-    <SafeAreaView className="flex-1 bg-app-bg">
-
-      <View className="flex-row items-center px-5 py-4 bg-white">
-
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-
+    <KeyboardAvoidingView
+      style={[styles.root, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Icon name="arrow-left" size={24} color="#374151" />
-
         </TouchableOpacity>
-
-        <Text className="text-gray-900 font-bold text-xl ml-4">Schedule Test Drive</Text>
-
+        <Text style={styles.headerTitle}>Schedule Test Drive</Text>
       </View>
 
+      <View style={styles.hero}>
+        <Text style={styles.heroText}>Experience your dream car</Text>
+      </View>
 
+      <Text style={styles.sectionLabel}>Select a vehicle</Text>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      {/* Outside vertical ScrollView so horizontal swipes are not captured by the parent */}
+      <VehiclePickerRow
+        vehicles={vehicles}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        loading={vehiclesLoading}
+      />
 
-        <View className="bg-app-primary px-5 py-6">
+      <ScrollView
+        style={styles.formScroll}
+        contentContainerStyle={[styles.formContent, { paddingBottom: insets.bottom + 32 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.sectionLabel}>Preferred date & time</Text>
+        <BookingDateTimePicker
+          date={bookingDate}
+          time={bookingTime}
+          onDateChange={setBookingDate}
+          onTimeChange={setBookingTime}
+        />
 
-          <Text className="text-white font-bold text-2xl">Experience your dream car</Text>
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>Notes (optional)</Text>
+        <TextInput
+          style={styles.notesInput}
+          placeholder="Any special requests?"
+          placeholderTextColor="#9CA3AF"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          textAlignVertical="top"
+        />
 
-        </View>
-
-
-
-        <View className="px-5 py-6">
-
-          <Text className="text-gray-900 font-bold text-base mb-3">
-
-            Select a vehicle {!selectedId && <Text className="text-red-500"></Text>}
-
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.submitBtnText}>
+            {isSubmitting ? 'Booking…' : 'Book Now'}
           </Text>
-
-
-
-          {vehiclesLoading && vehicleList.length === 0 ? (
-
-            <ActivityIndicator color="#76ABAE" className="mb-6" />
-
-          ) : (
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
-
-              {vehicleList.map((vehicle: VehicleParam) => {
-
-                const id = String(vehicle.id);
-
-                const selected = selectedId === id;
-
-                return (
-
-                  <TouchableOpacity
-
-                    key={id}
-
-                    onPress={() => setSelectedId(id)}
-
-                    className="mr-4 rounded-2xl overflow-hidden"
-
-                    style={{
-
-                      width: 160,
-
-                      elevation: 2,
-
-                      borderWidth: selected ? 2 : 0,
-
-                      borderColor: '#76ABAE',
-
-                    }}
-
-                  >
-
-                    <Image
-
-                      source={{ uri: getVehicleImage(vehicle) }}
-
-                      className="w-full h-24"
-
-                      resizeMode="cover"
-
-                    />
-
-                    <View className="bg-white p-2">
-
-                      <Text className="text-gray-900 font-semibold text-sm">
-
-                        {vehicle.brand} {vehicle.model || vehicle.make}
-
-                      </Text>
-
-                      <Text className="text-gray-500 text-xs">{vehicle.year}</Text>
-
-                    </View>
-
-                  </TouchableOpacity>
-
-                );
-
-              })}
-
-            </ScrollView>
-
-          )}
-
-
-
-          <Text className="text-gray-900 font-bold text-base mb-3">Preferred date & time</Text>
-
-          <BookingDateTimePicker
-
-            date={bookingDate}
-
-            time={bookingTime}
-
-            onDateChange={setBookingDate}
-
-            onTimeChange={setBookingTime}
-
-          />
-
-
-
-          <Text className="text-gray-900 font-bold text-base mb-3 mt-4">Notes (optional)</Text>
-
-          <TextInput
-
-            className="bg-white p-4 rounded-2xl mb-6 text-gray-900 min-h-[80px]"
-
-            style={{ elevation: 1, textAlignVertical: 'top' }}
-
-            placeholder="Any special requests?"
-
-            value={notes}
-
-            onChangeText={setNotes}
-
-            multiline
-
-          />
-
-
-
-          <TouchableOpacity
-
-            onPress={handleSubmit}
-
-            disabled={isSubmitting}
-
-            className="bg-app-primary px-6 py-4 rounded-2xl mb-20"
-
-            style={{ opacity: isSubmitting ? 0.7 : 1 }}
-
-          >
-
-            {isSubmitting ? (
-
-              <ActivityIndicator color="#fff" />
-
-            ) : (
-
-              <Text className="text-white font-bold text-center text-lg">Book Now</Text>
-
-            )}
-
-          </TouchableOpacity>
-
-        </View>
-
+        </TouchableOpacity>
       </ScrollView>
-
-    </SafeAreaView>
-
+    </KeyboardAvoidingView>
   );
-
 };
 
-
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: THEME.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+  },
+  headerTitle: {
+    marginLeft: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  hero: {
+    backgroundColor: THEME.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  heroText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  sectionLabel: {
+    marginTop: 20,
+    marginBottom: 10,
+    marginHorizontal: 20,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  sectionLabelSpaced: {
+    marginTop: 8,
+  },
+  formScroll: {
+    flex: 1,
+  },
+  formContent: {
+    paddingHorizontal: 20,
+  },
+  notesInput: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 88,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 20,
+    ...Platform.select({
+      android: { elevation: 1 },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+      },
+    }),
+  },
+  submitBtn: {
+    backgroundColor: THEME.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  submitBtnDisabled: {
+    opacity: 0.7,
+  },
+  submitBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+});
 
 export default TestDriveScreen;
-

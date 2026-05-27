@@ -1,17 +1,13 @@
 import React, { FC } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SIDE_MENU_ITEMS } from '../constants/homeDesign';
 import { getUserDisplayName, getUserInitials } from '../utils/user';
 import type { User } from '../app/actions';
+import AnimatedModalShell from './animated/AnimatedModalShell';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.78, 320);
 
 interface HomeSideMenuProps {
   visible: boolean;
@@ -29,57 +25,58 @@ const HomeSideMenu: FC<HomeSideMenuProps> = ({
   onLogout,
 }) => {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.drawer} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.profileBlock}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getUserInitials(user)}</Text>
-            </View>
-            <Text style={styles.profileName}>{getUserDisplayName(user)}</Text>
-            <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
-          </View>
+    <AnimatedModalShell
+      visible={visible}
+      onClose={onClose}
+      placement="left"
+      animation="slide-left"
+      slideDistance={DRAWER_WIDTH}
+      backdropOpacity={0.45}
+      panelStyle={styles.drawer}
+    >
+      <View style={styles.profileBlock}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getUserInitials(user)}</Text>
+        </View>
+        <Text style={styles.profileName}>{getUserDisplayName(user)}</Text>
+        <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
+      </View>
 
-          {SIDE_MENU_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuRow}
-              onPress={() => {
-                onNavigateTab(item.tab);
-                onClose();
-              }}
-            >
-              <Icon name={item.icon} size={22} color="#374151" />
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Icon name="chevron-right" size={20} color="#D1D5DB" />
-            </TouchableOpacity>
-          ))}
+      {SIDE_MENU_ITEMS.map((item) => (
+        <TouchableOpacity
+          key={item.id}
+          style={styles.menuRow}
+          onPress={() => {
+            onNavigateTab(item.tab);
+            onClose();
+          }}
+          activeOpacity={0.7}
+        >
+          <Icon name={item.icon} size={22} color="#374151" />
+          <Text style={styles.menuLabel}>{item.label}</Text>
+          <Icon name="chevron-right" size={20} color="#D1D5DB" />
+        </TouchableOpacity>
+      ))}
 
-          <TouchableOpacity
-            style={[styles.menuRow, styles.logoutRow]}
-            onPress={() => {
-              onClose();
-              onLogout();
-            }}
-          >
-            <Icon name="logout" size={22} color="#DC2626" />
-            <Text style={[styles.menuLabel, styles.logoutText]}>Sign out</Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      <TouchableOpacity
+        style={[styles.menuRow, styles.logoutRow]}
+        onPress={() => {
+          onClose();
+          onLogout();
+        }}
+        activeOpacity={0.7}
+      >
+        <Icon name="logout" size={22} color="#DC2626" />
+        <Text style={[styles.menuLabel, styles.logoutText]}>Sign out</Text>
+      </TouchableOpacity>
+    </AnimatedModalShell>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   drawer: {
-    width: '78%',
-    maxWidth: 320,
+    width: DRAWER_WIDTH,
+    flex: 1,
     backgroundColor: '#fff',
     paddingTop: 48,
     paddingHorizontal: 20,

@@ -22,13 +22,15 @@ interface Vehicle {
 
 interface VehicleListResponse {
   data?: Vehicle[];
+  member?: Vehicle[];
   'hydra:member'?: Vehicle[];
   total?: number;
+  totalItems?: number;
   'hydra:totalItems'?: number;
   count?: number;
 }
 
-/** Railway / API Platform may return a bare JSON array or { data: [...] }. */
+/** API may return a bare array, `{ data }`, or API Platform `{ member, totalItems }`. */
 export function normalizeVehicleListResponse(
   response: Vehicle[] | VehicleListResponse
 ): { data: Vehicle[]; total: number } {
@@ -38,11 +40,13 @@ export function normalizeVehicleListResponse(
 
   const data =
     response.data ??
+    response.member ??
     response['hydra:member'] ??
     [];
 
   const total =
     response.total ??
+    response.totalItems ??
     response['hydra:totalItems'] ??
     response.count ??
     data.length;

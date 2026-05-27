@@ -1,89 +1,135 @@
 import React, { FC } from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
-  Pressable,
-  ScrollView,
+  FlatList,
   StyleSheet,
+  Dimensions,
+  ListRenderItem,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AnimatedModalShell from './animated/AnimatedModalShell';
+import { THEME } from '../constants/theme';
+import type { AppNotification } from '../utils/notifications';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export interface AppNotification {
-  id: string;
-  title: string;
-  body: string;
-  time: string;
-  read?: boolean;
-}
+export type { AppNotification, NotificationAction } from '../utils/notifications';
 
 interface NotificationsPanelProps {
   visible: boolean;
   onClose: () => void;
   notifications: AppNotification[];
+  onNotificationPress?: (notification: AppNotification) => void;
   onMarkAllRead?: () => void;
 }
+
+const WINDOW_HEIGHT = Dimensions.get('window').height;
+const SHEET_MAX_HEIGHT = Math.round(WINDOW_HEIGHT * 0.72);
+const HANDLE_HEADER_HEIGHT = 72;
+const CLOSE_BTN_HEIGHT = 54;
 
 const NotificationsPanel: FC<NotificationsPanelProps> = ({
   visible,
   onClose,
   notifications,
+  onNotificationPress,
   onMarkAllRead,
 }) => {
+  const insets = useSafeAreaInsets();
+  const sheetPaddingBottom = Math.max(insets.bottom, 16);
+  const listHeight = Math.max(
+    200,
+    SHEET_MAX_HEIGHT - HANDLE_HEADER_HEIGHT - CLOSE_BTN_HEIGHT - sheetPaddingBottom - 24
+  );
+
+  const hasUnread = notifications.some((n) => !n.read);
+
+  const renderItem: ListRenderItem<AppNotification> = ({ item }) => {
+    const actionable = item.action.type !== 'none';
+    return (
+      <TouchableOpacity
+        style={[styles.item, !item.read && styles.itemUnread]}
+        onPress={() => onNotificationPress?.(item)}
+        activeOpacity={actionable ? 0.75 : 1}
+        disabled={!actionable || !onNotificationPress}
+      >
+        <View style={styles.itemIcon}>
+          <Icon
+            name={item.action.type === 'service' ? 'wrench' : 'bell-ring-outline'}
+            size={20}
+            color={THEME.accent}
+          />
+        </View>
+        <View style={styles.itemBody}>
+          <Text style={styles.itemTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={styles.itemText} numberOfLines={3}>
+            {item.body}
+          </Text>
+          <Text style={styles.itemTime}>{item.time}</Text>
+        </View>
+        {actionable && (
+          <Icon name="chevron-right" size={22} color="#D1D5DB" style={styles.itemChevron} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>Notifications</Text>
-            {onMarkAllRead && notifications.some((n) => !n.read) && (
-              <TouchableOpacity onPress={onMarkAllRead}>
-                <Text style={styles.markRead}>Mark all read</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-            {notifications.length === 0 ? (
-              <Text style={styles.empty}>You&apos;re all caught up.</Text>
-            ) : (
-              notifications.map((n) => (
-                <View key={n.id} style={[styles.item, !n.read && styles.itemUnread]}>
-                  <View style={styles.itemIcon}>
-                    <Icon name="bell-ring-outline" size={20} color="#76ABAE" />
-                  </View>
-                  <View style={styles.itemBody}>
-                    <Text style={styles.itemTitle}>{n.title}</Text>
-                    <Text style={styles.itemText}>{n.body}</Text>
-                    <Text style={styles.itemTime}>{n.time}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeText}>Close</Text>
+    <AnimatedModalShell
+      visible={visible}
+      onClose={onClose}
+      placement="bottom"
+      animation="slide-up"
+      slideDistance={SHEET_MAX_HEIGHT}
+      backdropOpacity={0.35}
+      panelStyle={{
+        ...styles.sheet,
+        maxHeight: SHEET_MAX_HEIGHT,
+        paddingBottom: sheetPaddingBottom,
+      }}
+    >
+      <View style={styles.handle} />
+      <View style={styles.header}>
+        <Text style={styles.title}>Notifications</Text>
+        {onMarkAllRead && hasUnread && (
+          <TouchableOpacity onPress={onMarkAllRead} activeOpacity={0.7}>
+            <Text style={styles.markRead}>Mark all read</Text>
           </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
+        )}
+      </View>
+
+      <FlatList
+        data={notifications}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        style={[styles.list, { height: listHeight }]}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator
+        nestedScrollEnabled
+        bounces
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={<Text style={styles.empty}>You&apos;re all caught up.</Text>}
+      />
+
+      <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.85}>
+        <Text style={styles.closeText}>Close</Text>
+      </TouchableOpacity>
+    </AnimatedModalShell>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
   sheet: {
+    width: '100%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '70%',
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   handle: {
     width: 40,
@@ -91,22 +137,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 12,
     marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
     paddingVertical: 12,
   },
   title: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  markRead: { fontSize: 14, fontWeight: '600', color: '#76ABAE' },
-  list: { paddingHorizontal: 16 },
+  markRead: { fontSize: 14, fontWeight: '600', color: THEME.accent },
+  list: {
+    width: '100%',
+  },
+  listContent: {
+    paddingBottom: 8,
+    flexGrow: 1,
+  },
   empty: { textAlign: 'center', color: '#9CA3AF', paddingVertical: 32 },
   item: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: 14,
     borderRadius: 16,
     marginBottom: 8,
@@ -124,10 +175,10 @@ const styles = StyleSheet.create({
   },
   itemBody: { flex: 1 },
   itemTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  itemText: { fontSize: 13, color: '#6B7280', marginTop: 4 },
+  itemText: { fontSize: 13, color: '#6B7280', marginTop: 4, lineHeight: 18 },
   itemTime: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
+  itemChevron: { marginLeft: 4 },
   closeBtn: {
-    marginHorizontal: 20,
     marginTop: 8,
     paddingVertical: 14,
     backgroundColor: '#F3F4F6',

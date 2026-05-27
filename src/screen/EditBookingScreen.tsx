@@ -84,6 +84,17 @@ const EditBookingScreen: FC = () => {
   }, [lastActionMessage, navigation, dispatch, dialog]);
 
   const handleSave = (): void => {
+    const active =
+      currentBooking?.id === bookingId ? currentBooking : null;
+    if (active && !canModifyBooking(active)) {
+      dialog.alert(
+        'Cannot edit',
+        'Only pending bookings can be changed.',
+        () => navigation.goBack(),
+        'warning'
+      );
+      return;
+    }
     const validationError = validateFutureBooking(bookingDate, bookingTime);
     if (validationError) {
       dialog.alert('Invalid schedule', validationError, undefined, 'warning');

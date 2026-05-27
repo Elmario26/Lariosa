@@ -1,6 +1,7 @@
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
 import { FC } from 'react';
 import { ROUTES } from '../utils';
+import { authStackScreenOptions } from './screenTransitions';
 
 // screens
 import Login from '../screen/auth/Login';
@@ -17,19 +18,9 @@ const Stack = createStackNavigator<AuthStackParamList>();
 
 const AuthNavigation: FC = () => {
   return (
-    <Stack.Navigator initialRouteName={ROUTES.LOGIN}>
-      <Stack.Screen
-        name={ROUTES.LOGIN}
-        component={Login}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.REGISTER}
-        component={Register}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator initialRouteName={ROUTES.LOGIN} screenOptions={authStackScreenOptions}>
+      <Stack.Screen name={ROUTES.LOGIN} component={Login} />
+      <Stack.Screen name={ROUTES.REGISTER} component={Register} />
     </Stack.Navigator>
   );
 };

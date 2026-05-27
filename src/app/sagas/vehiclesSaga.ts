@@ -24,7 +24,8 @@ export function* getVehiclesAsync(action: AnyAction): SagaIterator {
     console.log('[SAGA] getVehiclesAsync called with params:', action.payload);
 
     const { token } = yield select((state: RootState) => state.auth);
-    const response = yield call(getVehiclesAPI, action.payload, token);
+    const { refresh: _refresh, silent: _silent, ...apiParams } = action.payload ?? {};
+    const response = yield call(getVehiclesAPI, apiParams, token);
 
     console.log('[SAGA] Vehicles fetched successfully:', response);
 
@@ -86,8 +87,8 @@ export function* getFeaturedVehiclesAsync(): SagaIterator {
 }
 
 export function* vehiclesSaga(): SagaIterator {
-  // takeLeading avoids cancelling an in-flight fetch (shows as "Network request failed" on Android)
-  yield takeLeading(GET_VEHICLES_REQUEST, getVehiclesAsync);
+  // takeLatest so pull-to-refresh is not ignored while a fetch is in flight (takeLeading drops it)
+  yield takeLatest(GET_VEHICLES_REQUEST, getVehiclesAsync);
   yield takeLatest(GET_VEHICLE_DETAIL_REQUEST, getVehicleDetailAsync);
   yield takeLeading(GET_FEATURED_VEHICLES_REQUEST, getFeaturedVehiclesAsync);
 }

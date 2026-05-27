@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { FC } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -17,13 +18,15 @@ const AppContent: FC = () => {
   const { token, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   return (
-    <SafeAreaProvider>
-      <AppDialogProvider>
-        <StatusBar barStyle="dark-content" />
-        <Navigation />
-        <Toast />
-      </AppDialogProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppDialogProvider>
+          <StatusBar barStyle="dark-content" />
+          <Navigation />
+          <Toast />
+        </AppDialogProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
 

@@ -20,14 +20,18 @@ import {
   type TestDriveBooking,
 } from '../app/api/bookings';
 import {
-  loadLocalServiceBookings,
+  loadServiceBookingsForUser,
   deleteLocalServiceBooking,
+  canModifyServiceBooking,
+  serviceBookingLockedReason,
   type LocalServiceBooking,
 } from '../app/api/serviceBookings';
+import { testDriveLockedReason } from '../app/api/bookings';
 import { SCREEN_PADDING, TAB_BAR_BOTTOM_GAP } from '../constants/layout';
 import { HOME_COLORS } from '../constants/homeDesign';
 import { THEME, CARD_SHADOW, getBookingStatusStyle } from '../constants/theme';
 import FilterChipRow, { type FilterChipOption } from '../components/FilterChipRow';
+import AnimatedPressable from '../components/animated/AnimatedPressable';
 import { RootState } from '../app/store';
 import { useAppDialog } from '../context/AppDialogContext';
 // @ts-ignore
@@ -134,9 +138,9 @@ const AppointmentCard: FC<AppointmentCardProps> = ({
   return (
     <View style={styles.card}>
       {onPress ? (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={styles.cardTouchable}>
+        <AnimatedPressable onPress={onPress} style={styles.cardTouchable}>
           {body}
-        </TouchableOpacity>
+        </AnimatedPressable>
       ) : (
         <View style={styles.cardTouchable}>{body}</View>
       )}
@@ -183,7 +187,7 @@ const AppointmentsScreen: FC = () => {
   const { bookings, isLoading, isRefreshing, isSubmitting, error } = useSelector(
     (s: RootState) => s.bookings
   );
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, token } = useSelector((s: RootState) => s.auth);
 
   const syncBookings = useCallback(
     (opts: { silent?: boolean; refresh?: boolean } = {}) => {
@@ -195,9 +199,9 @@ const AppointmentsScreen: FC = () => {
   );
 
   const loadServiceBookings = useCallback(async () => {
-    const items = await loadLocalServiceBookings();
+    const items = await loadServiceBookingsForUser(token);
     setServiceBookings(items);
-  }, []);
+  }, [token]);
 
   const onPullRefresh = useCallback(() => {
     syncBookings({ refresh: true });
@@ -214,7 +218,10 @@ const AppointmentsScreen: FC = () => {
       syncBookings({ silent });
       hasLoadedOnce.current = true;
 
-      pollRef.current = setInterval(() => syncBookings({ silent: true }), POLL_INTERVAL_MS);
+      pollRef.current = setInterval(() => {
+        syncBookings({ silent: true });
+        void loadServiceBookings();
+      }, POLL_INTERVAL_MS);
 
       return () => {
         if (pollRef.current) {
@@ -254,6 +261,15 @@ const AppointmentsScreen: FC = () => {
     (filter === 'test_drive' && bookings.length === 0);
 
   const handleDeleteService = (item: LocalServiceBooking): void => {
+    if (!canModifyServiceBooking(item)) {
+      dialog.alert(
+        'Cannot cancel',
+        serviceBookingLockedReason(item) ?? 'This appointment can no longer be cancelled.',
+        undefined,
+        'warning'
+      );
+      return;
+    }
     dialog.confirm({
       title: 'Cancel service request',
       message: `Remove your ${item.serviceName} appointment request?`,
@@ -261,13 +277,28 @@ const AppointmentsScreen: FC = () => {
       confirmText: 'Remove',
       destructive: true,
       onConfirm: async () => {
-        await deleteLocalServiceBooking(item.id);
-        await loadServiceBookings();
+        try {
+          await deleteLocalServiceBooking(item.id, token);
+          await loadServiceBookings();
+        } catch (err: unknown) {
+          const message =
+            (err as { message?: string })?.message ?? 'Could not cancel this appointment.';
+          dialog.alert('Cannot cancel', message, undefined, 'warning');
+        }
       },
     });
   };
 
   const handleDeleteTestDrive = (item: TestDriveBooking): void => {
+    if (!canModifyBooking(item)) {
+      dialog.alert(
+        'Cannot cancel',
+        testDriveLockedReason(item) ?? 'Only pending test drives can be cancelled.',
+        undefined,
+        'warning'
+      );
+      return;
+    }
     dialog.confirm({
       title: 'Cancel booking',
       message: 'Remove this test drive request? This cannot be undone.',
@@ -357,6 +388,7 @@ const AppointmentsScreen: FC = () => {
         {showService &&
           serviceBookings.map((item) => {
             const { date, time } = formatBookingDateTime(item.requestedDateTime);
+            const modifiable = canModifyServiceBooking(item);
             return (
               <AppointmentCard
                 key={item.id}
@@ -365,11 +397,19 @@ const AppointmentsScreen: FC = () => {
                 subtitle={item.vehicleDescription}
                 date={date}
                 time={time}
-                status="pending"
-                statusStyle={getBookingStatusStyle('pending')}
+                status={item.status === 'synced' ? 'pending' : item.status}
+                statusStyle={getBookingStatusStyle(
+                  item.status === 'synced' ? 'pending' : item.status
+                )}
                 notes={item.notes}
-                onDelete={() => handleDeleteService(item)}
-                deleteLabel="Remove"
+                onPress={() =>
+                  navigation.navigate(ROUTES.BOOKING_DETAIL, {
+                    kind: 'service',
+                    serviceBookingId: item.id,
+                  })
+                }
+                onDelete={modifiable ? () => handleDeleteService(item) : undefined}
+                deleteLabel="Cancel"
               />
             );
           })}
@@ -388,7 +428,12 @@ const AppointmentsScreen: FC = () => {
                 status={item.status}
                 statusStyle={getBookingStatusStyle(item.status)}
                 notes={item.notes}
-                onPress={() => navigation.navigate(ROUTES.BOOKING_DETAIL, { bookingId: item.id })}
+                onPress={() =>
+                  navigation.navigate(ROUTES.BOOKING_DETAIL, {
+                    kind: 'test_drive',
+                    bookingId: item.id,
+                  })
+                }
                 onEdit={modifiable ? () => navigation.navigate(ROUTES.EDIT_BOOKING, { bookingId: item.id }) : undefined}
                 onDelete={modifiable ? () => handleDeleteTestDrive(item) : undefined}
                 actionsDisabled={isSubmitting}
@@ -521,8 +566,9 @@ const styles = StyleSheet.create({
   },
   filterRowWrap: {
     paddingHorizontal: SCREEN_PADDING,
-    marginTop: 14,
-    marginBottom: 10,
+    marginTop: 2,
+    marginBottom: 2,
+    overflow: 'visible',
   },
   list: {
     paddingHorizontal: SCREEN_PADDING,
