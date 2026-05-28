@@ -11,7 +11,11 @@ let socket: Socket | null = null;
 export function connectSocket(auth: SocketAuth): Socket {
   if (socket) {
     socket.auth = auth;
-    if (!socket.connected) socket.connect();
+    if (!socket.connected) {
+      socket.connect();
+    } else if (auth.userId != null) {
+      socket.emit(WS_EVENTS.SUBSCRIBE_USER, { userId: auth.userId });
+    }
     return socket;
   }
 
@@ -28,8 +32,10 @@ export function connectSocket(auth: SocketAuth): Socket {
   });
 
   socket.on(WS_EVENTS.CONNECT, () => {
-    if (auth.userId != null) {
-      socket?.emit(WS_EVENTS.SUBSCRIBE_USER, { userId: auth.userId });
+    const currentAuth = socket?.auth as SocketAuth | undefined;
+    const userId = currentAuth?.userId;
+    if (userId != null) {
+      socket?.emit(WS_EVENTS.SUBSCRIBE_USER, { userId });
     }
   });
 

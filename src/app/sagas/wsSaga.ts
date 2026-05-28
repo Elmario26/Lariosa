@@ -11,6 +11,7 @@ import {
 } from 'redux-saga/effects';
 import { AnyAction } from 'redux';
 import { Socket } from 'socket.io-client';
+import Toast from 'react-native-toast-message';
 import {
   USER_LOGIN_SUCCESS,
   LOGOUT_SUCCESS,
@@ -39,6 +40,73 @@ type WsChannelEvent =
   | { type: 'booking_updated'; payload: unknown }
   | { type: 'service_updated'; payload: unknown }
   | { type: 'notification'; payload: unknown };
+
+const TOAST_DEDUPE_MS = 5000;
+const recentToastKeys = new Map<string, number>();
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function toStatusLabel(value: unknown): string {
+  const status = String(value ?? '').trim().toLowerCase();
+  switch (status) {
+    case 'approved':
+      return 'Approved';
+    case 'rejected':
+      return 'Rejected';
+    case 'completed':
+      return 'Completed';
+    case 'pending':
+      return 'Pending';
+    default:
+      return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Updated';
+  }
+}
+
+function shouldShowToastOnce(key: string): boolean {
+  const now = Date.now();
+  const last = recentToastKeys.get(key) ?? 0;
+  if (now - last < TOAST_DEDUPE_MS) return false;
+  recentToastKeys.set(key, now);
+  return true;
+}
+
+function showBookingStatusToast(payload: unknown): void {
+  const root = asRecord(payload);
+  const booking = asRecord(root?.booking) ?? root;
+  if (!booking) return;
+  const id = booking.id ?? root?.id;
+  const status = booking.status ?? root?.status;
+  if (id == null || status == null) return;
+  const dedupeKey = `booking:${String(id)}:${String(status)}`;
+  if (!shouldShowToastOnce(dedupeKey)) return;
+
+  Toast.show({
+    type: 'success',
+    text1: `Test drive ${toStatusLabel(status)}`,
+    text2: `Booking #${String(id)} status changed`,
+  });
+}
+
+function showServiceStatusToast(payload: unknown): void {
+  const root = asRecord(payload);
+  const booking = asRecord(root?.booking) ?? asRecord(root?.data) ?? root;
+  if (!booking) return;
+  const id = booking.id ?? root?.id ?? root?.serviceBookingId;
+  const status = booking.status ?? root?.status;
+  if (id == null || status == null) return;
+  const name = String(booking.serviceName ?? root?.serviceName ?? 'Service booking');
+  const dedupeKey = `service:${String(id)}:${String(status)}`;
+  if (!shouldShowToastOnce(dedupeKey)) return;
+
+  Toast.show({
+    type: 'success',
+    text1: `${name} ${toStatusLabel(status)}`,
+    text2: `Service booking #${String(id)} status changed`,
+  });
+}
 
 function createSocketChannel(socket: Socket): EventChannel<WsChannelEvent> {
   return eventChannel((emit) => {
@@ -87,6 +155,7 @@ function* runWsSession(token: string, userId?: string | number): SagaIterator {
           break;
         case 'booking_updated':
           yield put(wsBookingEventReceived(event.payload));
+          showBookingStatusToast(event.payload);
           yield put(getBookingsRequest({ silent: true }));
           break;
         case 'service_updated':
@@ -97,6 +166,7 @@ function* runWsSession(token: string, userId?: string | number): SagaIterator {
             }
           }
           yield put(wsServiceEventReceived(event.payload));
+          showServiceStatusToast(event.payload);
           break;
         case 'notification':
           yield put(wsNotificationReceived(event.payload));
