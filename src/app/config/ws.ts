@@ -26,6 +26,6 @@ function toWsUrl(httpUrl: string): string {
  * Default: reuse API host.
  * If you run a separate socket gateway, set this to that host (example: http://192.168.1.29:4000).
  */
-export const WS_GATEWAY_HOST = API_HOST;
+export const WS_GATEWAY_HOST = 'https://lariosa-production.up.railway.app';
 
 export const WS_BASE_URL = toWsUrl(WS_GATEWAY_HOST);

@@ -17,9 +17,15 @@ const io = new Server(server, {
   transports: ['websocket', 'polling'],
 });
 
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 4000);
 const JWT_SECRET = process.env.JWT_SECRET || '';
 const INTERNAL_EMIT_TOKEN = process.env.INTERNAL_EMIT_TOKEN || '';
+
+if (!Number.isFinite(PORT) || PORT <= 0) {
+  console.error('Invalid PORT:', process.env.PORT);
+  process.exit(1);
+}
 
 function roomForUser(userId) {
   return `user:${String(userId)}`;
@@ -82,6 +88,10 @@ io.on('connection', (socket) => {
   });
 });
 
+app.get('/', (_req, res) => {
+  res.json({ ok: true, service: 'lariosa-websocket-gateway' });
+});
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -113,6 +123,11 @@ app.post('/events/notification', assertInternalToken, (req, res) => {
   return res.json({ ok: true });
 });
 
-server.listen(PORT, () => {
-  console.log(`WebSocket gateway listening on :${PORT}`);
+server.on('error', (error) => {
+  console.error('WebSocket gateway failed to start:', error);
+  process.exit(1);
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`WebSocket gateway listening on http://${HOST}:${PORT}`);
 });
