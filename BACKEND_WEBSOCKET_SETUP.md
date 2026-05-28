@@ -90,7 +90,27 @@ x-internal-token: <INTERNAL_EMIT_TOKEN>
 - `notification.user`
 - `subscribe.user` (optional fallback)
 
-## 5) Quick test with curl
+## 5) Deploy on Railway (websocket service)
+
+1. Create a **new Railway service** from the **LARIOSA** repo.
+2. Set **Root Directory** to `backend/websocket`.
+3. Commit includes `backend/websocket/railway.json` so Railpack uses:
+   - **Build:** `npm ci` (install only — does not hang)
+   - **Start:** `npm start`
+   - **Healthcheck:** `GET /health`
+4. Add service variables:
+   - `INTERNAL_EMIT_TOKEN` — random secret (same as Symfony `WS_INTERNAL_TOKEN`)
+   - `JWT_SECRET` — must match Symfony JWT signing (see Lexik note below)
+   - `CORS_ORIGIN` — `*` or your app origins
+5. Copy the public domain (e.g. `https://xxx.up.railway.app`) and set:
+   - Symfony `WS_GATEWAY_URL` to that URL
+   - Mobile `WS_GATEWAY_HOST` in `src/app/config/ws.ts` to that URL
+
+**Do not** deploy from repo root (Gemfile makes Railpack detect Ruby and fail).
+
+If build still runs `npm start` for 10+ minutes, cancel deploy and confirm root directory is `backend/websocket` and `railway.json` is deployed.
+
+## 6) Quick test with curl
 
 ```bash
 curl -X POST http://localhost:4000/events/booking-updated \
@@ -98,4 +118,6 @@ curl -X POST http://localhost:4000/events/booking-updated \
   -H "x-internal-token: change-this-too" \
   -d "{\"userId\":123,\"booking\":{\"id\":42,\"status\":\"approved\",\"requestedDateTime\":\"2026-05-30T10:00:00+08:00\"}}"
 ```
+
+Replace `localhost:4000` with your Railway gateway URL in production.
 
