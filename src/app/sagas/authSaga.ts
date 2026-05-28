@@ -15,17 +15,17 @@ import {
   REGISTER_SUCCESS,
   REGISTER_ERROR,
 } from '../actions';
-import { loginAPI, logoutAPI, registerAPI, getCurrentUser } from '../api/auth';
+import { loginAPI, googleLoginAPI, logoutAPI, registerAPI, getCurrentUser } from '../api/auth';
 import { RootState } from '../store';
 
 export function* userLoginAsync(action: AnyAction): SagaIterator {
   try {
     console.log('[SAGA] userLoginAsync called with action:', action);
 
-    const { email, password } = action.payload;
-    console.log('[SAGA] Extracted credentials - Email:', email, 'Password: ***');
-    console.log('[SAGA] Calling loginAPI...');
-    const response = yield call(loginAPI, email, password);
+    const { email, password, googleToken } = action.payload;
+    const response = googleToken
+      ? yield call(googleLoginAPI, googleToken)
+      : yield call(loginAPI, email, password);
     console.log('[SAGA] Login token received');
 
     const user = yield call(getCurrentUser, response.token);

@@ -17,6 +17,9 @@ import {
   DELETE_BOOKING_ERROR,
   CLEAR_BOOKING_ERROR,
   CLEAR_CURRENT_BOOKING,
+  WS_CONNECTION_STATE_CHANGED,
+  WS_BOOKING_EVENT_RECEIVED,
+  WS_SERVICE_EVENT_RECEIVED,
 } from '../actions/bookings';
 
 export interface BookingsState {
@@ -28,11 +31,15 @@ export interface BookingsState {
   error: string | null;
   lastCreatedMessage: string | null;
   lastActionMessage: string | null;
+  wsConnected: boolean;
+  lastRealtimeAt: string | null;
+  lastServiceRealtimeAt: string | null;
 }
 
 interface BookingsAction {
   type: string;
   payload?: any;
+  meta?: { silent?: boolean };
 }
 
 const initialState: BookingsState = {
@@ -44,6 +51,9 @@ const initialState: BookingsState = {
   error: null,
   lastCreatedMessage: null,
   lastActionMessage: null,
+  wsConnected: false,
+  lastRealtimeAt: null,
+  lastServiceRealtimeAt: null,
 };
 
 const upsertBooking = (list: TestDriveBooking[], booking: TestDriveBooking): TestDriveBooking[] => [
@@ -88,6 +98,9 @@ const bookingsReducer = (state: BookingsState = initialState, action: BookingsAc
       };
 
     case GET_BOOKING_DETAIL_ERROR:
+      if (action.meta?.silent) {
+        return state;
+      }
       return { ...state, error: action.payload };
 
     case CREATE_BOOKING_REQUEST:
@@ -109,6 +122,7 @@ const bookingsReducer = (state: BookingsState = initialState, action: BookingsAc
         currentBooking: action.payload.booking,
         lastCreatedMessage: action.payload.message,
         error: null,
+        lastRealtimeAt: new Date().toISOString(),
       };
 
     case UPDATE_BOOKING_SUCCESS:
@@ -119,6 +133,7 @@ const bookingsReducer = (state: BookingsState = initialState, action: BookingsAc
         currentBooking: action.payload.booking,
         lastActionMessage: action.payload.message,
         error: null,
+        lastRealtimeAt: new Date().toISOString(),
       };
 
     case DELETE_BOOKING_SUCCESS:
@@ -130,6 +145,38 @@ const bookingsReducer = (state: BookingsState = initialState, action: BookingsAc
           state.currentBooking?.id === action.payload.id ? null : state.currentBooking,
         lastActionMessage: action.payload.message,
         error: null,
+        lastRealtimeAt: new Date().toISOString(),
+      };
+
+    case WS_CONNECTION_STATE_CHANGED:
+      return {
+        ...state,
+        wsConnected: Boolean(action.payload?.connected),
+      };
+
+    case WS_BOOKING_EVENT_RECEIVED: {
+      const booking = action.payload?.booking;
+      if (!booking || typeof booking !== 'object') {
+        return {
+          ...state,
+          lastRealtimeAt: new Date().toISOString(),
+        };
+      }
+      return {
+        ...state,
+        bookings: upsertBooking(state.bookings, booking as TestDriveBooking),
+        currentBooking:
+          state.currentBooking?.id === (booking as TestDriveBooking).id
+            ? (booking as TestDriveBooking)
+            : state.currentBooking,
+        lastRealtimeAt: new Date().toISOString(),
+      };
+    }
+
+    case WS_SERVICE_EVENT_RECEIVED:
+      return {
+        ...state,
+        lastServiceRealtimeAt: new Date().toISOString(),
       };
 
     case CREATE_BOOKING_ERROR:

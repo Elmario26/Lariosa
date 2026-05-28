@@ -62,6 +62,23 @@ interface RemoteServiceBooking {
   updatedAt?: string;
 }
 
+interface RealtimeServiceBookingPayload {
+  booking?: unknown;
+  data?: unknown;
+  id?: string | number;
+  serviceBookingId?: string | number;
+  serviceId?: string;
+  serviceName?: string;
+  vehicleDescription?: string;
+  requestedDateTime?: string;
+  phone?: string;
+  notes?: string | null;
+  status?: string;
+  staffRemarks?: string | null;
+  approvedAt?: string | null;
+  createdAt?: string;
+}
+
 interface CreateServiceBookingResponse {
   success?: boolean;
   message?: string;
@@ -202,6 +219,63 @@ export async function loadLocalServiceBookings(): Promise<LocalServiceBooking[]>
 
 async function saveLocalServiceBookings(items: LocalServiceBooking[]): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function coerceId(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+export function normalizeRealtimeServiceBooking(
+  payload: unknown
+): LocalServiceBooking | null {
+  const root = (toRecord(payload) ?? {}) as RealtimeServiceBookingPayload;
+  const nested =
+    toRecord(root.booking) ??
+    toRecord(root.data) ??
+    toRecord(payload) ??
+    ({} as Record<string, unknown>);
+
+  const id = coerceId(nested.id ?? root.id ?? root.serviceBookingId);
+  if (!id) return null;
+
+  const serviceId = String(
+    nested.serviceId ?? root.serviceId ?? `service-${id}`
+  );
+  const requestedDateTime = String(
+    nested.requestedDateTime ?? root.requestedDateTime ?? new Date().toISOString()
+  );
+
+  return {
+    id,
+    serviceId,
+    serviceName: String(nested.serviceName ?? root.serviceName ?? 'Service appointment'),
+    vehicleDescription: String(
+      nested.vehicleDescription ?? root.vehicleDescription ?? 'Vehicle'
+    ),
+    requestedDateTime,
+    phone: String(nested.phone ?? root.phone ?? ''),
+    notes: (nested.notes ?? root.notes ?? undefined) as string | undefined,
+    status: resolveServiceBookingStatus(String(nested.status ?? root.status ?? 'pending')),
+    createdAt: String(nested.createdAt ?? root.createdAt ?? new Date().toISOString()),
+    staffRemarks: (nested.staffRemarks ?? root.staffRemarks ?? null) as string | null,
+    approvedAt: (nested.approvedAt ?? root.approvedAt ?? null) as string | null,
+  };
+}
+
+export async function upsertLocalServiceBooking(
+  booking: LocalServiceBooking
+): Promise<LocalServiceBooking[]> {
+  const existing = await loadLocalServiceBookings();
+  const next = [booking, ...existing.filter((item) => item.id !== booking.id)];
+  await saveLocalServiceBookings(next);
+  return next;
 }
 
 /**

@@ -9,6 +9,7 @@ import bookingsReducer, { BookingsState } from './reducers/bookingsReducer';
 import { authSaga } from './sagas/authSaga';
 import { vehiclesSaga } from './sagas/vehiclesSaga';
 import { bookingsSaga } from './sagas/bookingsSaga';
+import { wsSaga } from './sagas/wsSaga';
 
 // Root state interface
 export interface RootState {
@@ -61,5 +62,6 @@ const persistor = persistStore(store);
 sagaMiddleware.run(authSaga);
 sagaMiddleware.run(vehiclesSaga);
 sagaMiddleware.run(bookingsSaga);
+sagaMiddleware.run(wsSaga);
 
 export { store, persistor };

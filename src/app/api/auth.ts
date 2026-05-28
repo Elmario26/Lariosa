@@ -37,6 +37,15 @@ export const loginAPI = async (email: string, password: string): Promise<AuthRes
   return normalizeAuthResponse(data);
 };
 
+/** POST /login/google — body: { idToken } (Symfony verifies Google ID token, returns JWT) */
+export const googleLoginAPI = async (idToken: string): Promise<AuthResponse> => {
+  const data = await apiRequest<Record<string, unknown>>('/login/google', {
+    method: 'POST',
+    body: { idToken },
+  });
+  return normalizeAuthResponse(data);
+};
+
 export const registerAPI = async (userData: UserData): Promise<RegisterResponse> => {
   return apiRequest<RegisterResponse>('/register', {
     method: 'POST',

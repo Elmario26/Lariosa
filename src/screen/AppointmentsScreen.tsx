@@ -37,7 +37,7 @@ import { useAppDialog } from '../context/AppDialogContext';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const POLL_INTERVAL_MS = 8000;
+const FALLBACK_POLL_INTERVAL_MS = 30000;
 
 type FilterKey = 'all' | 'service' | 'test_drive';
 
@@ -184,7 +184,15 @@ const AppointmentsScreen: FC = () => {
   const [serviceBookings, setServiceBookings] = useState<LocalServiceBooking[]>([]);
   const [filter, setFilter] = useState<FilterKey>('all');
 
-  const { bookings, isLoading, isRefreshing, isSubmitting, error } = useSelector(
+  const {
+    bookings,
+    isLoading,
+    isRefreshing,
+    isSubmitting,
+    error,
+    wsConnected,
+    lastServiceRealtimeAt,
+  } = useSelector(
     (s: RootState) => s.bookings
   );
   const { isAuthenticated, token } = useSelector((s: RootState) => s.auth);
@@ -218,10 +226,12 @@ const AppointmentsScreen: FC = () => {
       syncBookings({ silent });
       hasLoadedOnce.current = true;
 
-      pollRef.current = setInterval(() => {
-        syncBookings({ silent: true });
-        void loadServiceBookings();
-      }, POLL_INTERVAL_MS);
+      if (!wsConnected) {
+        pollRef.current = setInterval(() => {
+          syncBookings({ silent: true });
+          void loadServiceBookings();
+        }, FALLBACK_POLL_INTERVAL_MS);
+      }
 
       return () => {
         if (pollRef.current) {
@@ -229,7 +239,15 @@ const AppointmentsScreen: FC = () => {
           pollRef.current = null;
         }
       };
-    }, [syncBookings, isAuthenticated, bookings.length, loadServiceBookings])
+    }, [syncBookings, isAuthenticated, bookings.length, loadServiceBookings, wsConnected])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAuthenticated || !lastServiceRealtimeAt) return undefined;
+      void loadServiceBookings();
+      return undefined;
+    }, [isAuthenticated, lastServiceRealtimeAt, loadServiceBookings])
   );
 
   const totalCount = serviceBookings.length + bookings.length;

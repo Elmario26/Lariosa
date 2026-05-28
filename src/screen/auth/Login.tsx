@@ -56,18 +56,29 @@ const Login: FC<LoginScreenProps> = () => {
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const userData = userInfo as {
-        user?: { email?: string };
-        email?: string;
-        idToken?: string;
-        serverAuthCode?: string;
-      };
+      const response = await GoogleSignin.signIn();
+      if (response.type === 'cancelled') return;
+
+      const { user, idToken, serverAuthCode } = response.data;
+      let googleToken = idToken ?? serverAuthCode ?? '';
+      if (!googleToken) {
+        const tokens = await GoogleSignin.getTokens();
+        googleToken = tokens.idToken ?? '';
+      }
+      if (!googleToken) {
+        Toast.show({
+          type: 'error',
+          text1: 'Google sign-in failed',
+          text2: 'Could not get a Google token. Check webClientId in App.tsx.',
+        });
+        return;
+      }
+
       dispatch(
         userLoginRequest({
-          email: userData.user?.email || userData.email || '',
+          email: user.email,
           password: '',
-          googleToken: userData.idToken || userData.serverAuthCode || '',
+          googleToken,
         })
       );
     } catch (err: unknown) {

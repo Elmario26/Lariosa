@@ -39,7 +39,7 @@ import type { AppointmentDetailData } from '../types/appointmentDetail';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const POLL_INTERVAL_MS = 8000;
+const FALLBACK_POLL_INTERVAL_MS = 30000;
 
 const BookingDetailScreen: FC = () => {
   const navigation = useNavigation<any>();
@@ -48,7 +48,7 @@ const BookingDetailScreen: FC = () => {
   const dispatch = useDispatch();
   const dialog = useAppDialog();
 
-  const { currentBooking, isLoading, isSubmitting, error } = useSelector(
+  const { currentBooking, isLoading, isSubmitting, error, wsConnected, lastServiceRealtimeAt } = useSelector(
     (s: RootState) => s.bookings
   );
   const { token } = useSelector((s: RootState) => s.auth);
@@ -81,26 +81,53 @@ const BookingDetailScreen: FC = () => {
     }
   }, [serviceId, token]);
 
-  useEffect(() => {
-    if (testDriveId) {
-      dispatch(getBookingDetailRequest(testDriveId));
-    }
-  }, [testDriveId, dispatch]);
+  const refreshTestDriveDetail = useCallback(
+    (silent = false) => {
+      if (!testDriveId) return;
+      dispatch(getBookingDetailRequest(testDriveId, { silent }));
+    },
+    [testDriveId, dispatch]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      if (!isService) return undefined;
-
-      void loadServiceBooking();
-      const intervalId = setInterval(() => {
+      if (isService) {
         void loadServiceBooking();
-      }, POLL_INTERVAL_MS);
+        if (!wsConnected) {
+          const intervalId = setInterval(() => {
+            void loadServiceBooking();
+          }, FALLBACK_POLL_INTERVAL_MS);
 
-      return () => {
-        clearInterval(intervalId);
-      };
-    }, [isService, loadServiceBooking])
+          return () => {
+            clearInterval(intervalId);
+          };
+        }
+        return undefined;
+      }
+
+      if (testDriveId) {
+        refreshTestDriveDetail(false);
+        if (!wsConnected) {
+          const intervalId = setInterval(() => {
+            refreshTestDriveDetail(true);
+          }, FALLBACK_POLL_INTERVAL_MS);
+
+          return () => {
+            clearInterval(intervalId);
+          };
+        }
+        return undefined;
+      }
+
+      return undefined;
+    }, [isService, testDriveId, loadServiceBooking, refreshTestDriveDetail, wsConnected])
   );
+
+  useEffect(() => {
+    if (isService && serviceId && lastServiceRealtimeAt) {
+      void loadServiceBooking();
+    }
+  }, [isService, serviceId, lastServiceRealtimeAt, loadServiceBooking]);
 
   useEffect(() => {
     if (!isService && error) {
@@ -110,7 +137,7 @@ const BookingDetailScreen: FC = () => {
 
   const handleRefresh = (): void => {
     if (testDriveId) {
-      dispatch(getBookingDetailRequest(testDriveId));
+      refreshTestDriveDetail(false);
       dispatch(getBookingsRequest({ silent: true }));
       return;
     }

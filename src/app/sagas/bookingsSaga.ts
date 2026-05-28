@@ -46,17 +46,22 @@ function* getBookingsAsync(action: AnyAction): SagaIterator {
 }
 
 function* getBookingDetailAsync(action: AnyAction): SagaIterator {
+  const payload = action.payload;
+  const bookingId = typeof payload === 'number' ? payload : payload.bookingId;
+  const silent = typeof payload === 'number' ? false : Boolean(payload?.silent);
+
   try {
     const { token } = yield select((state: RootState) => state.auth);
     if (!token) {
       throw { message: 'Please log in' };
     }
-    const booking = yield call(getTestDriveBookingByIdAPI, action.payload, token);
+    const booking = yield call(getTestDriveBookingByIdAPI, bookingId, token);
     yield put({ type: GET_BOOKING_DETAIL_SUCCESS, payload: booking });
   } catch (error: any) {
     yield put({
       type: GET_BOOKING_DETAIL_ERROR,
       payload: error.message || 'Failed to load booking',
+      meta: { silent },
     });
   }
 }
